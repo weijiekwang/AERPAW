@@ -16,6 +16,8 @@ from aerpawlib.safetyChecker import SafetyCheckerClient
 from radio_power import RadioEmitter
 
 # step size between each radio measurement
+MIN_STEP_SIZE = 0.1 # never move less than this much in a step
+MAX_STEP_SIZE = 100 # never move more than this much in a step
 STEP_SIZE = 40  # when going forward - how far, in meters
 WEST = 270 # azimuth in degrees
 SEARCH_ALTITUDE = 30 # in meters
@@ -26,6 +28,11 @@ class RoverSearch(StateMachine):
     best_pos: Coordinate = None
     start_time = None
     search_time = None
+
+    total_steps = 0
+    steps_this_heading = 0
+
+    bounds = {'w': None, 'e': None, 'n': None, 's': None}
 
     def initialize_args(self, extra_args: List[str]):
         """Parse arguments passed to vehicle script"""
@@ -121,7 +128,12 @@ class RoverSearch(StateMachine):
             print("Can't go there:")
             print(msg)
             return "turn_right_90"
-
+        
+        self.total_steps = self.total_steps + 1
+        self.steps_this_heading = self.steps_this_heading + 1
+        
+        print("Step tracker: %d %d" % self.steps_this_heading, self.total_steps)
+        
         # otherwise move forward to the next location
         moving = asyncio.ensure_future(
             vehicle.goto_coordinates(vehicle.position + move_vector)
@@ -141,6 +153,7 @@ class RoverSearch(StateMachine):
         heading = vehicle.heading
         new_heading = heading + 90
 
+        self.steps_this_heading = 0
         turning = asyncio.ensure_future(vehicle.set_heading(new_heading))
 
         # wait for vehicle to finish turning
