@@ -109,11 +109,24 @@ class RoverSearch(StateMachine):
         # go forward and continually log the vehicle's position
         print("Moving Forward")
 
+        self.total_steps = self.total_steps + 1
+        self.steps_this_heading = self.steps_this_heading + 1
+        
         # use the current vehicle heading to move forward
         heading = vehicle.heading
         heading_rad = heading * 2 * math.pi / 360
+
+        # decrease step size with total steps
+        # increase step size if we keep going in same direction
+        computed_step_size = (20/(20+self.total_steps))*((10+self.steps_this_heading)/10)*STEP_SIZE
+        step_size = computed_step_size
+        step_size = max(step_size, MIN_STEP_SIZE)
+        step_size = min(step_size, MAX_STEP_SIZE)
+
+        print(f"Step tracker: {self.steps_this_heading}, {self.total_steps}, {step_size}")
+
         move_vector = VectorNED(
-            STEP_SIZE * math.cos(heading_rad), STEP_SIZE * math.sin(heading_rad), 0
+            step_size * math.cos(heading_rad), step_size * math.sin(heading_rad), 0
         )
 
         # ensure the next location is inside the geofence
@@ -128,12 +141,7 @@ class RoverSearch(StateMachine):
             print("Can't go there:")
             print(msg)
             return "turn_right_90"
-        
-        self.total_steps = self.total_steps + 1
-        self.steps_this_heading = self.steps_this_heading + 1
-        
-        print(f"Step tracker:   {self.steps_this_heading}, {self.total_steps}")
-        
+                
         # otherwise move forward to the next location
         moving = asyncio.ensure_future(
             vehicle.goto_coordinates(vehicle.position + move_vector)
