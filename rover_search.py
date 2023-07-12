@@ -80,7 +80,7 @@ class RoverSearch(StateMachine):
         # Create a CSV writer object if we are saving data
         if self.save_csv:
             self.csv_writer = csv.writer(self.log_file)
-            self.csv_writer.writerow(["longitude", "latitude", "altitude", "RSSI"])
+            self.csv_writer.writerow(["timestamp","longitude", "latitude", "altitude", "RSSI"])
 
     @state(name="start", first=True)
     async def start(self, vehicle: Drone):
@@ -207,7 +207,7 @@ class RoverSearch(StateMachine):
         if self.save_csv:
             position = vehicle.position
             self.csv_writer.writerow(
-                [position.lon, position.lat, position.alt, measurement]
+                [datetime.datetime.now() - self.start_time, position.lon, position.lat, position.alt, measurement]
             )
 
         # If the search time has ended, end the script
