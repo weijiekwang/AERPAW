@@ -132,7 +132,7 @@ class RoverSearch(StateMachine):
         self.total_steps = self.total_steps + 1
         self.steps_this_heading = self.steps_this_heading + 1
         
-        print("Step tracker: %d %d" % self.steps_this_heading, self.total_steps)
+        print(f"Step tracker:   {self.steps_this_heading}, {self.total_steps}")
         
         # otherwise move forward to the next location
         moving = asyncio.ensure_future(
