@@ -171,7 +171,7 @@ class RoverSearch(StateMachine):
         await turning
         return "go_forward"
 
-    @timed_state(name="take_measurement", duration=5)
+    @timed_state(name="take_measurement", duration=1)
     async def take_measurement(self, vehicle: Drone):
         # Take a radio power measurement and decide to move forward or turn
 
