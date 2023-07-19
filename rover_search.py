@@ -184,28 +184,30 @@ class RoverSearch(StateMachine):
         new_heading = HEADINGS_LIST[self.heading_idx]
 
         # TODO: we may have discovered a new bound, so update
-        print(heading)
         if ( ( (NORTH % 360) <= heading <= ((NORTH + DEG_TOLERANCE) % 360) ) or
              ( (NORTH - DEG_TOLERANCE) <= heading <= (NORTH) )  ):
-            print("Heading was %f, so discovered new bound moving N" % heading)
-            print(vehicle.position.lat, vehicle.position.lon)
-            #self.bounds["n"] = self.bounds["n"] + 1
+            print(f"Heading was {heading} so discovered new bound moving N")
+            if ( (self.bounds['n'] is None) or (vehicle.position.lat < self.bounds['n']) ): 
+                print(f"Updating bound from {self.bounds['n']} to {vehicle.position.lat}" )
+                self.bounds['n'] = vehicle.position.lat
 
         elif ( (EAST - DEG_TOLERANCE) <= heading <= (EAST + DEG_TOLERANCE) ) :
-            print("Heading was %f, so discovered new bound moving E" % heading)
-            print(vehicle.position.lat, vehicle.position.lon)
-            #self.bounds["e"] = self.bounds["e"] + 1
+            print(f"Heading was {heading} so discovered new bound moving E")
+            if ( (self.bounds['e'] is None) or (vehicle.position.lon < self.bounds['e']) ): 
+                print(f"Updating bound from {self.bounds['e']} to {vehicle.position.lon}" )
+                self.bounds['e'] = vehicle.position.lon
 
         elif ( (SOUTH - DEG_TOLERANCE) <= heading <= (SOUTH + DEG_TOLERANCE) ) :
-            print("Heading was %f, so discovered new bound moving S" % heading)
-            print(vehicle.position.lat, vehicle.position.lon)
-            #self.bounds["s"] = self.bounds["s"] + 1
+            print(f"Heading was {heading} so discovered new bound moving S")
+            if ( (self.bounds['s'] is None) or (vehicle.position.lat > self.bounds['s']) ): 
+                print(f"Updating bound from {self.bounds['s']} to {vehicle.position.lat}" )
+                self.bounds['s'] = vehicle.position.lat
 
         elif ( (WEST - DEG_TOLERANCE) <= heading <= (WEST + DEG_TOLERANCE) ) :
-            print("Heading was %f, so discovered new bound moving W" % heading)
-            print(vehicle.position.lat, vehicle.position.lon)
-            #self.bounds["w"] = self.bounds["w"] + 1
-
+            print(f"Heading was {heading} so discovered new bound moving W")
+            if ( (self.bounds['w'] is None) or (vehicle.position.lon > self.bounds['w']) ): 
+                print(f"Updating bound from {self.bounds['w']} to {vehicle.position.lon}" )
+                self.bounds['w'] = vehicle.position.lon
 
         self.steps_this_heading = 0
         turning = asyncio.ensure_future(vehicle.set_heading(new_heading))
