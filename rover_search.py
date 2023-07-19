@@ -130,7 +130,7 @@ class RoverSearch(StateMachine):
         heading_rad = heading * 2 * math.pi / 360
 
         # check if we have crossed a bound, if so, modify step size
-        bound_dist = 1
+        bound_dist = 1/1000
         # we may have discovered a new bound, so update
         if (  self.bounds['n']  and ( (NORTH % 360) <= heading <= ((NORTH + DEG_TOLERANCE) % 360) ) or
              ( (NORTH - DEG_TOLERANCE) <= heading <= (NORTH) )  ):
@@ -153,7 +153,7 @@ class RoverSearch(StateMachine):
         # increase step size if we keep going in same direction
         decay_factor = (20/(20+self.total_steps))
         change_factor = ((10+self.steps_this_heading)/10)
-        bound_factor = 1
+        bound_factor = 1000*bound_dist
         computed_step_size = decay_factor*change_factor*bound_factor*STEP_SIZE
         step_size = computed_step_size        
         
