@@ -116,10 +116,31 @@ class RoverSearch(StateMachine):
         heading = vehicle.heading
         heading_rad = heading * 2 * math.pi / 360
 
+
+        if (heading <= 45 | heading > 315):
+            self.bounds["n"] = self.bounds["n"] + 1
+            boundary_step_size = 2/(self.bounds["n"])*STEP_SIZE
+
+        elif (heading > 45 & heading <=135):
+            self.bounds["e"] = self.bounds["e"] + 1
+            boundary_step_size = 2/(self.bounds["e"])*STEP_SIZE
+
+        elif (heading > 135 & heading <=225):
+            self.bounds["s"] = self.bounds["s"] + 1
+            boundary_step_size = 2/(self.bounds["s"])*STEP_SIZE
+
+        elif (heading > 225 & heading <=315):
+            self.bounds["w"] = self.bounds["w"] + 1
+            boundary_step_size = 2/(self.bounds["w"])*STEP_SIZE
+
+        step_size = boundary_step_size
         # decrease step size with total steps
         # increase step size if we keep going in same direction
-        computed_step_size = (20/(20+self.total_steps))*((10+self.steps_this_heading)/10)*STEP_SIZE
-        step_size = computed_step_size
+        
+        #computed_step_size = (20/(20+self.total_steps))*((10+self.steps_this_heading)/10)*STEP_SIZE
+        #step_size = computed_step_size
+        
+        
         step_size = max(step_size, MIN_STEP_SIZE)
         step_size = min(step_size, MAX_STEP_SIZE)
 
