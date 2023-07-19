@@ -188,18 +188,22 @@ class RoverSearch(StateMachine):
         if ( ( (NORTH % 360) <= heading <= ((NORTH + DEG_TOLERANCE) % 360) ) or
              ( (NORTH - DEG_TOLERANCE) <= heading <= (NORTH) )  ):
             print("Heading was %f, so discovered new bound moving N" % heading)
+            print(vehicle.position.lat, vehicle.position.lon)
             #self.bounds["n"] = self.bounds["n"] + 1
 
         elif ( (EAST - DEG_TOLERANCE) <= heading <= (EAST + DEG_TOLERANCE) ) :
             print("Heading was %f, so discovered new bound moving E" % heading)
+            print(vehicle.position.lat, vehicle.position.lon)
             #self.bounds["e"] = self.bounds["e"] + 1
 
         elif ( (SOUTH - DEG_TOLERANCE) <= heading <= (SOUTH + DEG_TOLERANCE) ) :
             print("Heading was %f, so discovered new bound moving S" % heading)
+            print(vehicle.position.lat, vehicle.position.lon)
             #self.bounds["s"] = self.bounds["s"] + 1
 
         elif ( (WEST - DEG_TOLERANCE) <= heading <= (WEST + DEG_TOLERANCE) ) :
             print("Heading was %f, so discovered new bound moving W" % heading)
+            print(vehicle.position.lat, vehicle.position.lon)
             #self.bounds["w"] = self.bounds["w"] + 1
 
 
