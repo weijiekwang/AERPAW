@@ -123,6 +123,7 @@ class RoverSearch(StateMachine):
         step_size = max(step_size, MIN_STEP_SIZE)
         step_size = min(step_size, MAX_STEP_SIZE)
 
+        print(f"Heading: {heading}")
         print(f"Step tracker: {self.steps_this_heading}, {self.total_steps}, {step_size}")
 
         move_vector = VectorNED(
