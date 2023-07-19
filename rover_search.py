@@ -170,21 +170,22 @@ class RoverSearch(StateMachine):
         new_heading = heading + 90
 
         # TODO: we may have discovered a new bound, so update
-        if (heading <= 45 | heading > 315):
+        print(heading)
+        if (heading <= 45 or heading > 315):
             print("Heading was %f, so discovered new bound moving N" % heading)
             #self.bounds["n"] = self.bounds["n"] + 1
 
-        elif (heading > 45 & heading <=135):
+        elif (heading > 45 and heading <=135):
             print("Heading was %f, so discovered new bound moving E" % heading)
-            self.bounds["e"] = self.bounds["e"] + 1
+            #self.bounds["e"] = self.bounds["e"] + 1
 
-        elif (heading > 135 & heading <=225):
+        elif (heading > 135 and heading <=225):
             print("Heading was %f, so discovered new bound moving S" % heading)
-            self.bounds["s"] = self.bounds["s"] + 1
+            #self.bounds["s"] = self.bounds["s"] + 1
 
-        elif (heading > 225 & heading <=315):
+        elif (heading > 225 and heading <=315):
             print("Heading was %f, so discovered new bound moving W" % heading)
-            self.bounds["w"] = self.bounds["w"] + 1
+            #self.bounds["w"] = self.bounds["w"] + 1
 
 
         self.steps_this_heading = 0
