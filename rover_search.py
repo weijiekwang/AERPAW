@@ -19,7 +19,15 @@ from radio_power import RadioEmitter
 MIN_STEP_SIZE = 0.1 # never move less than this much in a step
 MAX_STEP_SIZE = 100 # never move more than this much in a step
 STEP_SIZE = 40  # when going forward - how far, in meters
+
+# move along four cardinal directions
 WEST = 270 # azimuth in degrees
+EAST = 90
+NORTH = 360
+SOUTH = 180
+DEG_TOLERANCE = 10
+HEADINGS_LIST = [WEST, NORTH, EAST, SOUTH]
+
 SEARCH_ALTITUDE = 30 # in meters
 
 class RoverSearch(StateMachine):
@@ -31,6 +39,9 @@ class RoverSearch(StateMachine):
 
     total_steps = 0
     steps_this_heading = 0
+
+    # Keep track of current heading index
+    heading_idx = 0 
 
     # Initially, bounds are None
     # over time, we will discover bounds and add them here
@@ -98,7 +109,7 @@ class RoverSearch(StateMachine):
         print("Took off")
 
         # Let's start flying west first (we're taking of in the east)
-        turning = asyncio.ensure_future(vehicle.set_heading(WEST))
+        turning = asyncio.ensure_future(vehicle.set_heading( HEADINGS_LIST[self.heading_idx]  ))
 
         # wait for vehicle to finish turning
         while not turning.done():
@@ -167,23 +178,27 @@ class RoverSearch(StateMachine):
         # turn right before moving forward again
         print("turning")
         heading = vehicle.heading
-        new_heading = heading + 90
+
+        # turn - go to next heading in list
+        self.heading_idx = (self.heading + 1) % 4
+        new_heading = HEADINGS_LIST[self.heading_idx]
 
         # TODO: we may have discovered a new bound, so update
         print(heading)
-        if (heading <= 45 or heading > 315):
+        if ( ( (NORTH % 360) <= heading <= ((NORTH + DEG_TOLERANCE) % 360) ) or
+             ( (NORTH - DEG_TOLERANCE) <= heading <= (NORTH) )  ):
             print("Heading was %f, so discovered new bound moving N" % heading)
             #self.bounds["n"] = self.bounds["n"] + 1
 
-        elif (heading > 45 and heading <=135):
+        elif ( (EAST - DEG_TOLERANCE) <= heading <= (EAST + DEG_TOLERANCE) ) :
             print("Heading was %f, so discovered new bound moving E" % heading)
             #self.bounds["e"] = self.bounds["e"] + 1
 
-        elif (heading > 135 and heading <=225):
+        elif ( (SOUTH - DEG_TOLERANCE) <= heading <= (SOUTH + DEG_TOLERANCE) ) :
             print("Heading was %f, so discovered new bound moving S" % heading)
             #self.bounds["s"] = self.bounds["s"] + 1
 
-        elif (heading > 225 and heading <=315):
+        elif ( (WEST - DEG_TOLERANCE) <= heading <= (WEST + DEG_TOLERANCE) ) :
             print("Heading was %f, so discovered new bound moving W" % heading)
             #self.bounds["w"] = self.bounds["w"] + 1
 
