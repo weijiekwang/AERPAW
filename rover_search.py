@@ -180,7 +180,7 @@ class RoverSearch(StateMachine):
         heading = vehicle.heading
 
         # turn - go to next heading in list
-        self.heading_idx = (self.heading + 1) % 4
+        self.heading_idx = (self.heading_idx + 1) % 4
         new_heading = HEADINGS_LIST[self.heading_idx]
 
         # TODO: we may have discovered a new bound, so update
