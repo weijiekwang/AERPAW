@@ -32,7 +32,7 @@ class RoverSearch(StateMachine):
     total_steps = 0
     steps_this_heading = 0
 
-    bounds = {'w': None, 'e': None, 'n': None, 's': None}
+    bounds = {'w': 0, 'e': 0, 'n': 0, 's': 0}
 
     def initialize_args(self, extra_args: List[str]):
         """Parse arguments passed to vehicle script"""
