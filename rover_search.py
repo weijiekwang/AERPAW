@@ -119,19 +119,19 @@ class RoverSearch(StateMachine):
 
         if (heading <= 45 | heading > 315):
             self.bounds["n"] = self.bounds["n"] + 1
-            boundary_step_size = 2/(self.bounds["n"])*STEP_SIZE
+            boundary_step_size = 3/(self.bounds["n"]+1)*STEP_SIZE
 
         elif (heading > 45 & heading <=135):
             self.bounds["e"] = self.bounds["e"] + 1
-            boundary_step_size = 2/(self.bounds["e"])*STEP_SIZE
+            boundary_step_size = 3/(self.bounds["e"]+1)*STEP_SIZE
 
         elif (heading > 135 & heading <=225):
             self.bounds["s"] = self.bounds["s"] + 1
-            boundary_step_size = 2/(self.bounds["s"])*STEP_SIZE
+            boundary_step_size = 3/(self.bounds["s"]+1)*STEP_SIZE
 
         elif (heading > 225 & heading <=315):
             self.bounds["w"] = self.bounds["w"] + 1
-            boundary_step_size = 2/(self.bounds["w"])*STEP_SIZE
+            boundary_step_size = 3/(self.bounds["w"]+1)*STEP_SIZE
 
         step_size = boundary_step_size
         # decrease step size with total steps
@@ -145,7 +145,7 @@ class RoverSearch(StateMachine):
         step_size = min(step_size, MAX_STEP_SIZE)
 
         print(f"Heading: {heading}")
-        print(f"Step tracker: {self.steps_this_heading}, {self.total_steps}, {step_size}")
+        #print(f"Step tracker: {self.steps_this_heading}, {self.total_steps}, {step_size}")
 
         move_vector = VectorNED(
             step_size * math.cos(heading_rad), step_size * math.sin(heading_rad), 0
