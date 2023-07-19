@@ -32,7 +32,9 @@ class RoverSearch(StateMachine):
     total_steps = 0
     steps_this_heading = 0
 
-    bounds = {'w': 0, 'e': 0, 'n': 0, 's': 0}
+    # Initially, bounds are None
+    # over time, we will discover bounds and add them here
+    bounds = {'w': None, 'e': None, 'n': None, 's': None}
 
     def initialize_args(self, extra_args: List[str]):
         """Parse arguments passed to vehicle script"""
@@ -116,36 +118,20 @@ class RoverSearch(StateMachine):
         heading = vehicle.heading
         heading_rad = heading * 2 * math.pi / 360
 
+        # TODO: check if we have crossed a bound, if so, modify step size
 
-        if (heading <= 45 | heading > 315):
-            self.bounds["n"] = self.bounds["n"] + 1
-            boundary_step_size = 3/(self.bounds["n"]+1)*STEP_SIZE
 
-        elif (heading > 45 & heading <=135):
-            self.bounds["e"] = self.bounds["e"] + 1
-            boundary_step_size = 3/(self.bounds["e"]+1)*STEP_SIZE
-
-        elif (heading > 135 & heading <=225):
-            self.bounds["s"] = self.bounds["s"] + 1
-            boundary_step_size = 3/(self.bounds["s"]+1)*STEP_SIZE
-
-        elif (heading > 225 & heading <=315):
-            self.bounds["w"] = self.bounds["w"] + 1
-            boundary_step_size = 3/(self.bounds["w"]+1)*STEP_SIZE
-
-        step_size = boundary_step_size
         # decrease step size with total steps
         # increase step size if we keep going in same direction
         
-        #computed_step_size = (20/(20+self.total_steps))*((10+self.steps_this_heading)/10)*STEP_SIZE
-        #step_size = computed_step_size
-        
+        computed_step_size = (20/(20+self.total_steps))*((10+self.steps_this_heading)/10)*STEP_SIZE
+        step_size = computed_step_size        
         
         step_size = max(step_size, MIN_STEP_SIZE)
         step_size = min(step_size, MAX_STEP_SIZE)
 
-        print(f"Heading: {heading}")
-        #print(f"Step tracker: {self.steps_this_heading}, {self.total_steps}, {step_size}")
+        #print(f"Heading: {heading}")
+        print(f"Step tracker: {self.steps_this_heading}, {self.total_steps}, {step_size}")
 
         move_vector = VectorNED(
             step_size * math.cos(heading_rad), step_size * math.sin(heading_rad), 0
@@ -182,6 +168,24 @@ class RoverSearch(StateMachine):
         print("turning")
         heading = vehicle.heading
         new_heading = heading + 90
+
+        # TODO: we may have discovered a new bound, so update
+        if (heading <= 45 | heading > 315):
+            print("Heading was %f, so discovered new bound moving N" % heading)
+            #self.bounds["n"] = self.bounds["n"] + 1
+
+        elif (heading > 45 & heading <=135):
+            print("Heading was %f, so discovered new bound moving E" % heading)
+            self.bounds["e"] = self.bounds["e"] + 1
+
+        elif (heading > 135 & heading <=225):
+            print("Heading was %f, so discovered new bound moving S" % heading)
+            self.bounds["s"] = self.bounds["s"] + 1
+
+        elif (heading > 225 & heading <=315):
+            print("Heading was %f, so discovered new bound moving W" % heading)
+            self.bounds["w"] = self.bounds["w"] + 1
+
 
         self.steps_this_heading = 0
         turning = asyncio.ensure_future(vehicle.set_heading(new_heading))
