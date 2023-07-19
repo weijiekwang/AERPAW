@@ -129,19 +129,39 @@ class RoverSearch(StateMachine):
         heading = vehicle.heading
         heading_rad = heading * 2 * math.pi / 360
 
-        # TODO: check if we have crossed a bound, if so, modify step size
+        # check if we have crossed a bound, if so, modify step size
+        bound_dist = 1
+        # we may have discovered a new bound, so update
+        if (  self.bounds['n']  and ( (NORTH % 360) <= heading <= ((NORTH + DEG_TOLERANCE) % 360) ) or
+             ( (NORTH - DEG_TOLERANCE) <= heading <= (NORTH) )  ):
+            bound_dist = abs(vehicle.position.lat - self.bounds['n'])
+
+        elif ( self.bounds['e'] and (EAST - DEG_TOLERANCE) <= heading <= (EAST + DEG_TOLERANCE) ) :
+            print(f"Heading was {heading} so discovered new bound moving E")
+            bound_dist = abs(vehicle.position.lon - self.bounds['e'])
+
+        elif (  self.bounds['s'] and (SOUTH - DEG_TOLERANCE) <= heading <= (SOUTH + DEG_TOLERANCE) ) :
+            print(f"Heading was {heading} so discovered new bound moving S")
+            bound_dist = abs(vehicle.position.lat - self.bounds['s'])
+
+        elif ( self.bounds['w'] and (WEST - DEG_TOLERANCE) <= heading <= (WEST + DEG_TOLERANCE) ) :
+            print(f"Heading was {heading} so discovered new bound moving W")
+            bound_dist = abs(vehicle.position.lon - self.bounds['w'])
 
 
         # decrease step size with total steps
         # increase step size if we keep going in same direction
-        
-        computed_step_size = (20/(20+self.total_steps))*((10+self.steps_this_heading)/10)*STEP_SIZE
+        decay_factor = (20/(20+self.total_steps))
+        change_factor = ((10+self.steps_this_heading)/10)
+        bound_factor = 1
+        computed_step_size = decay_factor*change_factor*bound_factor*STEP_SIZE
         step_size = computed_step_size        
         
         step_size = max(step_size, MIN_STEP_SIZE)
         step_size = min(step_size, MAX_STEP_SIZE)
 
         #print(f"Heading: {heading}")
+        print(f"Distance to bound: {bound_dist}")
         print(f"Step tracker: {self.steps_this_heading}, {self.total_steps}, {step_size}")
 
         move_vector = VectorNED(
@@ -183,7 +203,7 @@ class RoverSearch(StateMachine):
         self.heading_idx = (self.heading_idx + 1) % 4
         new_heading = HEADINGS_LIST[self.heading_idx]
 
-        # TODO: we may have discovered a new bound, so update
+        # we may have discovered a new bound, so update
         if ( ( (NORTH % 360) <= heading <= ((NORTH + DEG_TOLERANCE) % 360) ) or
              ( (NORTH - DEG_TOLERANCE) <= heading <= (NORTH) )  ):
             print(f"Heading was {heading} so discovered new bound moving N")
