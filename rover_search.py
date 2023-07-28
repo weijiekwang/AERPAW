@@ -6,7 +6,7 @@ import csv
 from typing import List
 from struct import unpack
 from argparse import ArgumentParser
-from geopy import distance
+
 
 from aerpawlib.runner import StateMachine
 from aerpawlib.vehicle import Vehicle, Drone
@@ -17,7 +17,7 @@ from aerpawlib.safetyChecker import SafetyCheckerClient
 from radio_power import RadioEmitter
 
 # step size between each radio measurement
-MIN_STEP_SIZE = 0.1 # never move less than this much in a step
+MIN_STEP_SIZE = 1 # never move less than this much in a step
 MAX_STEP_SIZE = 100 # never move more than this much in a step
 STEP_SIZE = 40  # when going forward - how far, in meters
 
@@ -94,7 +94,7 @@ class RoverSearch(StateMachine):
         # Create a CSV writer object if we are saving data
         if self.save_csv:
             self.csv_writer = csv.writer(self.log_file)
-            self.csv_writer.writerow(["timestamp","longitude", "latitude", "altitude", "RSSI", "Distance in Meter"])
+            self.csv_writer.writerow(["timestamp","longitude", "latitude", "altitude", "RSSI"])
 
     @state(name="start", first=True)
     async def start(self, vehicle: Drone):
@@ -122,7 +122,14 @@ class RoverSearch(StateMachine):
     async def go_forward(self, vehicle: Vehicle):
         # go forward and continually log the vehicle's position
         print("Moving Forward")
-
+        print(f"Self Total steps: {self.total_steps} ")
+        print(f"Self Steps This Heading: {self.steps_this_heading}")
+        print(f"Vehicle heading: {vehicle.heading}")
+        print(f"Vehicle longitude: {vehicle.position.lon}")
+        print(f"Vehicle latitude: {vehicle.position.lat}")
+        print(self.bounds['n'])
+        print("Going on to code")
+        
         self.total_steps = self.total_steps + 1
         self.steps_this_heading = self.steps_this_heading + 1
         
@@ -133,9 +140,11 @@ class RoverSearch(StateMachine):
         # check if we have crossed a bound, if so, modify step size
         bound_dist = 1/1000
         # we may have discovered a new bound, so update
-        if (  self.bounds['n']  and ( (NORTH % 360) <= heading <= ((NORTH + DEG_TOLERANCE) % 360) ) or
-             ( (NORTH - DEG_TOLERANCE) <= heading <= (NORTH) )  ):
-            bound_dist = abs(vehicle.position.lat - self.bounds['n'])
+        if (  self.bounds['n']  and (( (NORTH % 360) <= heading <= ((NORTH + DEG_TOLERANCE) % 360) ) or
+             ( (NORTH - DEG_TOLERANCE) <= heading <= (NORTH) ))  ):
+            print(f"INSIDE IF")
+            if (self.bounds['n']):
+                bound_dist = abs(vehicle.position.lat - self.bounds['n'])
 
         elif ( self.bounds['e'] and (EAST - DEG_TOLERANCE) <= heading <= (EAST + DEG_TOLERANCE) ) :
             print(f"Heading was {heading} so discovered new bound moving E")
@@ -149,12 +158,18 @@ class RoverSearch(StateMachine):
             print(f"Heading was {heading} so discovered new bound moving W")
             bound_dist = abs(vehicle.position.lon - self.bounds['w'])
 
-
+        
         # decrease step size with total steps
         # increase step size if we keep going in same direction
         decay_factor = (20/(20+self.total_steps))
         change_factor = ((10+self.steps_this_heading)/10)
         bound_factor = 1000*bound_dist
+        if (bound_dist > 0.00001):
+            bound_factor = 1
+        else: 
+            bound_factor = 0.8
+
+        print(f"Bound dist, Bound Factor: {bound_dist, bound_factor}")
         computed_step_size = decay_factor*change_factor*bound_factor*STEP_SIZE
         step_size = computed_step_size        
         
@@ -275,9 +290,8 @@ class RoverSearch(StateMachine):
         # save the current position and measurement if logging to file
         if self.save_csv:
             position = vehicle.position
-            distanceinmeter = (distance.distance(position.lon, position.lat).m)
             self.csv_writer.writerow(
-                [datetime.datetime.now() - self.start_time, position.lon, position.lat, position.alt, measurement, distanceinmeter]
+                [datetime.datetime.now() - self.start_time, position.lon, position.lat, position.alt, measurement]
             )
 
         # If the search time has ended, end the script
