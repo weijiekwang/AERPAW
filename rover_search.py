@@ -6,6 +6,7 @@ import csv
 from typing import List
 from struct import unpack
 from argparse import ArgumentParser
+from geopy import distance
 
 from aerpawlib.runner import StateMachine
 from aerpawlib.vehicle import Vehicle, Drone
@@ -93,7 +94,7 @@ class RoverSearch(StateMachine):
         # Create a CSV writer object if we are saving data
         if self.save_csv:
             self.csv_writer = csv.writer(self.log_file)
-            self.csv_writer.writerow(["timestamp","longitude", "latitude", "altitude", "RSSI"])
+            self.csv_writer.writerow(["timestamp","longitude", "latitude", "altitude", "RSSI", "Distance in Meter"])
 
     @state(name="start", first=True)
     async def start(self, vehicle: Drone):
@@ -274,8 +275,9 @@ class RoverSearch(StateMachine):
         # save the current position and measurement if logging to file
         if self.save_csv:
             position = vehicle.position
+            distanceinmeter = (distance.distance(position.lon, position.lat).m)
             self.csv_writer.writerow(
-                [datetime.datetime.now() - self.start_time, position.lon, position.lat, position.alt, measurement]
+                [datetime.datetime.now() - self.start_time, position.lon, position.lat, position.alt, measurement, distanceinmeter]
             )
 
         # If the search time has ended, end the script
