@@ -291,7 +291,7 @@ class RoverSearch(StateMachine):
         if self.save_csv:
             position = vehicle.position
             self.csv_writer.writerow(
-                [datetime.datetime.now() - self.start_time, position.lon, position.lat, position.alt, measurement]
+                [datetime.datetime.now() - self.start_time, position.lon, position.lat, position.alt, measurement, self.best_pos]
             )
 
         # If the search time has ended, end the script
