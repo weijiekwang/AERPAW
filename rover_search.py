@@ -17,7 +17,7 @@ from aerpawlib.safetyChecker import SafetyCheckerClient
 from radio_power import RadioEmitter
 
 # step size between each radio measurement
-MIN_STEP_SIZE = 1 # never move less than this much in a step
+MIN_STEP_SIZE = 5 # never move less than this much in a step
 MAX_STEP_SIZE = 100 # never move more than this much in a step
 STEP_SIZE = 40  # when going forward - how far, in meters
 
@@ -137,66 +137,96 @@ class RoverSearch(StateMachine):
         heading = vehicle.heading
         heading_rad = heading * 2 * math.pi / 360
 
-        # check if we have crossed a bound, if so, modify step size
-        bound_dist = 1/1000
-        # we may have discovered a new bound, so update
-        if (  self.bounds['n']  and (( (NORTH % 360) <= heading <= ((NORTH + DEG_TOLERANCE) % 360) ) or
-             ( (NORTH - DEG_TOLERANCE) <= heading <= (NORTH) ))  ):
-            print(f"INSIDE IF")
-            if (self.bounds['n']):
-                bound_dist = abs(vehicle.position.lat - self.bounds['n'])
+        safety_bound = 1
+        while True:
+            # decrease step size with total steps
+            # increase step size if we keep going in same direction
+            decay_factor =  20*math.exp(-1*self.total_steps/5)
+            change_factor = ((10+self.steps_this_heading)/10)
 
-        elif ( self.bounds['e'] and (EAST - DEG_TOLERANCE) <= heading <= (EAST + DEG_TOLERANCE) ) :
-            print(f"Heading was {heading} so discovered new bound moving E")
-            bound_dist = abs(vehicle.position.lon - self.bounds['e'])
+            computed_step_size =  decay_factor*change_factor*STEP_SIZE
+            step_size = computed_step_size*safety_bound        
+            
+            step_size = max(step_size, MIN_STEP_SIZE)
+            step_size = min(step_size, MAX_STEP_SIZE)
 
-        elif (  self.bounds['s'] and (SOUTH - DEG_TOLERANCE) <= heading <= (SOUTH + DEG_TOLERANCE) ) :
-            print(f"Heading was {heading} so discovered new bound moving S")
-            bound_dist = abs(vehicle.position.lat - self.bounds['s'])
 
-        elif ( self.bounds['w'] and (WEST - DEG_TOLERANCE) <= heading <= (WEST + DEG_TOLERANCE) ) :
-            print(f"Heading was {heading} so discovered new bound moving W")
-            bound_dist = abs(vehicle.position.lon - self.bounds['w'])
+            #print(f"Heading: {heading}")
+            print(f"Step tracker: {self.steps_this_heading}, {self.total_steps}, {step_size}")
 
-        
-        # decrease step size with total steps
-        # increase step size if we keep going in same direction
-        decay_factor = (20/(20+self.total_steps))
-        change_factor = ((10+self.steps_this_heading)/10)
-        bound_factor = 1000*bound_dist
-        if (bound_dist > 0.00001):
-            bound_factor = 1
-        else: 
-            bound_factor = 0.8
+            move_vector = VectorNED(
+                step_size * math.cos(heading_rad), step_size * math.sin(heading_rad), 0
+            )
 
-        print(f"Bound dist, Bound Factor: {bound_dist, bound_factor}")
-        computed_step_size = decay_factor*change_factor*bound_factor*STEP_SIZE
-        step_size = computed_step_size        
-        
-        step_size = max(step_size, MIN_STEP_SIZE)
-        step_size = min(step_size, MAX_STEP_SIZE)
+            # ensure the next location is inside the geofence
+            cur_pos = vehicle.position
+            next_pos = vehicle.position + move_vector
 
-        #print(f"Heading: {heading}")
-        print(f"Distance to bound: {bound_dist}, {bound_factor}")
-        print(f"Step tracker: {self.steps_this_heading}, {self.total_steps}, {step_size}")
+            
+            # check distance between next position and bound
+            bound_dist = 1/1000
+            # we may have discovered a new bound, so update
+            if (  self.bounds['n']  and (( (NORTH % 360) <= heading <= ((NORTH + DEG_TOLERANCE) % 360) ) or
+                ( (NORTH - DEG_TOLERANCE) <= heading <= (NORTH) ))  ):
+                if (self.bounds['n']):
+                    bound_dist =  self.bounds['n'] - next_pos.lat
 
-        move_vector = VectorNED(
-            step_size * math.cos(heading_rad), step_size * math.sin(heading_rad), 0
-        )
+            elif ( self.bounds['e'] and (EAST - DEG_TOLERANCE) <= heading <= (EAST + DEG_TOLERANCE) ) :
+                bound_dist = self.bounds['e'] - next_pos.lon
 
-        # ensure the next location is inside the geofence
-        cur_pos = vehicle.position
-        next_pos = vehicle.position + move_vector
-        (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-            cur_pos, next_pos
-        )
-        
-        # if the next location violates the geofence turn 90 degrees
-        if not valid_waypoint:
-            print("Can't go there:")
-            print(msg)
-            return "turn_right_90"
-                
+            elif (  self.bounds['s'] and (SOUTH - DEG_TOLERANCE) <= heading <= (SOUTH + DEG_TOLERANCE) ) :
+                bound_dist = next_pos.lat - self.bounds['s']
+
+            elif ( self.bounds['w'] and (WEST - DEG_TOLERANCE) <= heading <= (WEST + DEG_TOLERANCE) ) :
+                bound_dist = next_pos.lon - self.bounds['w']
+
+            bound_factor = 1000*bound_dist
+            if (bound_dist > 0.0005):
+                bound_factor = 1
+            elif bound_dist > 0: 
+                bound_factor = 0.8
+            else:
+                bound_factor = 0.2
+
+            print(f"Bound dist, Bound Factor: {bound_dist, bound_factor}")
+
+            computed_step_size =  bound_factor*decay_factor*change_factor*STEP_SIZE
+            step_size = computed_step_size*safety_bound        
+            
+            step_size = max(step_size, MIN_STEP_SIZE)
+            step_size = min(step_size, MAX_STEP_SIZE)
+
+
+            # for OG rover search uncomment this line
+            # step_size = STEP_SIZE*safety_bound
+
+
+            move_vector = VectorNED(
+                step_size * math.cos(heading_rad), step_size * math.sin(heading_rad), 0
+            )
+
+            # ensure the next location is inside the geofence
+            cur_pos = vehicle.position
+            next_pos = vehicle.position + move_vector
+
+
+            (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
+                cur_pos, next_pos
+            )
+            
+            # if the next location violates the geofence 
+            if not valid_waypoint:
+                # if we can't go there - take a smaller step in same direction 
+                print("Can't go there:")
+                print(msg)
+                safety_bound = safety_bound/2
+                print("Halving step size so as not to violate geofence")
+                # if that smaller step is less than the min, go in a different drection instead
+                if computed_step_size*safety_bound < MIN_STEP_SIZE:
+                    print("Turning so as not to violate geofence")
+                    return "turn_right_90"
+            else:
+                break        
         # otherwise move forward to the next location
         moving = asyncio.ensure_future(
             vehicle.goto_coordinates(vehicle.position + move_vector)
@@ -252,10 +282,12 @@ class RoverSearch(StateMachine):
         while not turning.done():
             await asyncio.sleep(0.1)
 
+        print(f"Vehicle heading after turning: {vehicle.heading}, should be {new_heading}")
+
         await turning
         return "go_forward"
 
-    @timed_state(name="take_measurement", duration=1)
+    @timed_state(name="take_measurement", duration=5)
     async def take_measurement(self, vehicle: Drone):
         # Take a radio power measurement and decide to move forward or turn
 
