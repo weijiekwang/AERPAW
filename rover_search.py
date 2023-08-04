@@ -17,7 +17,7 @@ from aerpawlib.safetyChecker import SafetyCheckerClient
 from radio_power import RadioEmitter
 
 # step size between each radio measurement
-MIN_STEP_SIZE = 5 # never move less than this much in a step
+MIN_STEP_SIZE = 2.5 # never move less than this much in a step
 MAX_STEP_SIZE = 100 # never move more than this much in a step
 STEP_SIZE = 40  # when going forward - how far, in meters
 
