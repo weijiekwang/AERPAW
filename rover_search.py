@@ -94,7 +94,7 @@ class RoverSearch(StateMachine):
         # Create a CSV writer object if we are saving data
         if self.save_csv:
             self.csv_writer = csv.writer(self.log_file)
-            self.csv_writer.writerow(["timestamp","longitude", "latitude", "altitude", "RSSI"])
+            self.csv_writer.writerow(["timestamp","longitude", "latitude", "altitude", "RSSI", "best_lat", "best_lon"])
 
     @state(name="start", first=True)
     async def start(self, vehicle: Drone):
@@ -198,7 +198,7 @@ class RoverSearch(StateMachine):
 
 
             # for OG rover search uncomment this line
-            # step_size = STEP_SIZE*safety_bound
+            step_size = STEP_SIZE*safety_bound
 
 
             move_vector = VectorNED(
