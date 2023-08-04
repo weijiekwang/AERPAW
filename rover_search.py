@@ -198,7 +198,7 @@ class RoverSearch(StateMachine):
 
 
             # for OG rover search uncomment this line
-            step_size = STEP_SIZE*safety_bound
+            #step_size = STEP_SIZE*safety_bound
 
 
             move_vector = VectorNED(
