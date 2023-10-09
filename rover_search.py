@@ -19,8 +19,8 @@ from radio_power import RadioEmitter
 
 # step size between each radio measurement
 MIN_STEP_SIZE = 2.5 # never move less than this much in a step
-MAX_STEP_SIZE = 100 # never move more than this much in a step
-STEP_SIZE = 40  # when going forward - how far, in meters
+MAX_STEP_SIZE = 10 # never move more than this much in a step
+STEP_SIZE = 5  # when going forward - how far, in meters
 
 # move along four cardinal directions
 WEST = 270 # azimuth in degrees
@@ -167,35 +167,33 @@ class RoverSearch(StateMachine):
 
         # Step 1: Go to SW bound
         # waypoint_list = np.linspace(BOUND_SE['lon'], BOUND_SW['lon'], num=SEARCH_STEPS, endpoint=True)
-        waypoint_list = [-78.69621515, -78.69658438, -78.69695362, -78.69732285, -78.69769209, -78.69806132, -78.69843056, -78.69879979, -78.69916902, -78.69953826]
-        for wp_lon in waypoint_list:
-            next_pos =  Coordinate(BOUND_SE['lat'], wp_lon, SEARCH_ALTITUDE)
-            (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-                vehicle.position, next_pos
+        next_pos =  Coordinate(BOUND_SW['lat'], BOUND_SW['lon'], SEARCH_ALTITUDE)
+        (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
+            vehicle.position, next_pos
+        )
+        if valid_waypoint:
+            moving = asyncio.ensure_future(
+                vehicle.goto_coordinates(next_pos)
             )
-            if valid_waypoint:
-                moving = asyncio.ensure_future(
-                    vehicle.goto_coordinates(next_pos)
-                )
-                while not moving.done():
-                    await asyncio.sleep(0.1)
+            while not moving.done():
+                # Take a fake radio measurement if configured
+                if self.fake_radio:
+                    measurement = self.radio_emitter.get_power(vehicle.position)
+                    print(f"Fake measurement: {measurement}")
+                # Otherwise take a real measurement
+                else:
+                    # Open data buffer
+                    f = open("/root/Power", "rb")
+                    # unpack binary reading into a float
+                    measurement_from_file = unpack("<f", f.read(4))
+                    measurement = measurement_from_file[0]
+                    # close the data buffer
+                    f.close()
+                    print(f"Real measurement: {measurement}")
 
-            # Take a fake radio measurement if configured
-            if self.fake_radio:
-                measurement = self.radio_emitter.get_power(vehicle.position)
-                print(f"Fake measurement: {measurement}")
-            # Otherwise take a real measurement
-            else:
-                # Open data buffer
-                f = open("/root/Power", "rb")
-                # unpack binary reading into a float
-                measurement_from_file = unpack("<f", f.read(4))
-                measurement = measurement_from_file[0]
-                # close the data buffer
-                f.close()
-                print(f"Real measurement: {measurement}")
+                LON_SEARCH.append( {'lon': vehicle.position.lon, 'power': measurement} )
 
-            LON_SEARCH.append( {'lon': vehicle.position.lon, 'power': measurement} )
+                await asyncio.sleep(0.1)
 
         # at SW position, also add entry to latitude list
         LAT_SEARCH.append( {'lat': vehicle.position.lat, 'power': measurement} )
@@ -230,37 +228,7 @@ class RoverSearch(StateMachine):
 
                 await asyncio.sleep(0.1)
 
-        """
-        waypoint_list = [35.72688213, 35.72715193, 35.72742172, 35.72769152, 35.72796132,35.72823111, 35.72850091, 35.72877071, 35.7290405 , 35.7293103 ]
-        for wp_lat in waypoint_list:
-            next_pos =  Coordinate(wp_lat, BOUND_SW['lon'], SEARCH_ALTITUDE)
-            (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-                vehicle.position, next_pos
-            )
-            if valid_waypoint:
-                moving = asyncio.ensure_future(
-                    vehicle.goto_coordinates(next_pos)
-                )
-                while not moving.done():
-                    await asyncio.sleep(0.1)
 
-            # Take a fake radio measurement if configured
-            if self.fake_radio:
-                measurement = self.radio_emitter.get_power(vehicle.position)
-                print(f"Fake measurement: {measurement}")
-            # Otherwise take a real measurement
-            else:
-                # Open data buffer
-                f = open("/root/Power", "rb")
-                # unpack binary reading into a float
-                measurement_from_file = unpack("<f", f.read(4))
-                measurement = measurement_from_file[0]
-                # close the data buffer
-                f.close()
-                print(f"Real measurement: {measurement}")
-        
-            LAT_SEARCH.append( {'lat': vehicle.position.lat, 'power': measurement} )
-        """
   
         # Step 3: Go to latitude, longitude with highest signal power
         print(LAT_SEARCH)
@@ -269,7 +237,7 @@ class RoverSearch(StateMachine):
         idx_max_lon = argmax([m['power'] for m in LON_SEARCH])
         
         next_pos =  Coordinate(LAT_SEARCH[idx_max_lat]['lat'], LON_SEARCH[idx_max_lon]['lon'], SEARCH_ALTITUDE)
-        
+
         (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
             vehicle.position, next_pos
         )
