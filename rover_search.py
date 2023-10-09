@@ -2,6 +2,7 @@ import asyncio
 import math
 import datetime
 import csv
+import numpy as np
 
 
 from typing import List
@@ -31,11 +32,13 @@ DEG_TOLERANCE = 10
 HEADINGS_LIST = [WEST, NORTH, EAST, SOUTH]
 
 
-Upperright=(-78.69621514941473,35.72931030026633)
-Upperleft=(-78.69953825817279,35.72931030026633)
-Lowerright=(-78.69621514941473,35.72688213193035)
-Lowerleft=(-78.69953825817279,35.72688213193035)
-firstattempt_list=[Lowerright,Lowerleft,Upperleft,Upperright]
+BOUND_NE={'lon':-78.69621514941473, 'lat':35.72931030026633}
+BOUND_NW={'lon':-78.69953825817279, 'lat':35.72931030026633}
+BOUND_SE={'lon':-78.69621514941473, 'lat':35.72688213193035}
+BOUND_SW={'lon':-78.69953825817279, 'lat':35.72688213193035}
+LON_SEARCH = []
+LAT_SEARCH = []
+SEARCH_STEPS = 10
 
 SEARCH_ALTITUDE = 30 # in meters
 
@@ -117,21 +120,151 @@ class RoverSearch(StateMachine):
         await vehicle.takeoff(SEARCH_ALTITUDE)
         print("Took off")
 
-        # Let's start flying west first (we're taking of in the east)
+        return "first_stage"
+
+    @state(name="first_stage")
+    async def first_stage(self, vehicle: Drone):
+        # in the first stage, we should:
+        # 0. Go to SE bound
+        # 1. Move from SE to SW bound, find longitude with highest signal power
+        # 2. Move from SW to NW bound, find latitude with highest signal power
+        # 3. Go to longitude, latitude with highest signal power
+
+        # Step 0: Go to SE bound
+        next_pos =  util.Coordinate(BOUND_SE['lat'], BOUND_SE['lon'], SEARCH_ALTITUDE)
+        (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
+            vehicle.position, next_pos)
+        )
+        if valid_waypoint:
+            moving = asyncio.ensure_future(
+                vehicle.goto_coordinates(next_pos)
+            )
+            while not moving.done():
+                await asyncio.sleep(0.1)
+
+            # Take a fake radio measurement if configured
+            if self.fake_radio:
+                measurement = self.radio_emitter.get_power(vehicle.position)
+                print(f"Fake measurement: {measurement}")
+            # Otherwise take a real measurement
+            else:
+                # Open data buffer
+                f = open("/root/Power", "rb")
+                # unpack binary reading into a float
+                measurement_from_file = unpack("<f", f.read(4))
+                measurement = measurement_from_file[0]
+                # close the data buffer
+                f.close()
+                print(f"Real measurement: {measurement}")
+
+            LON_SEARCH.append( {'lon': vehicle.position.lon, 'power': measurement} )
+
+        # Step 1: Go to SW bound
+        waypoint_list = np.linspace(BOUND_SE['lon'], BOUND_SW['lon'], num=SEARCH_STEPS, endpoint=True)
+        for wp_lon in waypoint_list:
+            next_pos =  util.Coordinate(BOUND_SE['lat'], wp_lon, SEARCH_ALTITUDE)
+            (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
+                vehicle.position, next_pos)
+            )
+            if valid_waypoint:
+                moving = asyncio.ensure_future(
+                    vehicle.goto_coordinates(next_pos)
+                )
+                while not moving.done():
+                    await asyncio.sleep(0.1)
+
+            # Take a fake radio measurement if configured
+            if self.fake_radio:
+                measurement = self.radio_emitter.get_power(vehicle.position)
+                print(f"Fake measurement: {measurement}")
+            # Otherwise take a real measurement
+            else:
+                # Open data buffer
+                f = open("/root/Power", "rb")
+                # unpack binary reading into a float
+                measurement_from_file = unpack("<f", f.read(4))
+                measurement = measurement_from_file[0]
+                # close the data buffer
+                f.close()
+                print(f"Real measurement: {measurement}")
+
+            LON_SEARCH.append( {'lon': vehicle.position.lon, 'power': measurement} )
+
+        # at SW position, also add entry to latitude list
+        LAT_SEARCH.append( {'lat': vehicle.position.lat, 'power': measurement} )
+
+        # Step 2: Go to NW bound
+        waypoint_list = np.linspace(BOUND_SW['lat'], BOUND_NW['lat'], num=SEARCH_STEPS, endpoint=True)
+        for wp_lat in waypoint_list:
+            next_pos =  util.Coordinate(wp_lat, BOUND_SW['lon'], SEARCH_ALTITUDE)
+            (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
+                vehicle.position, next_pos)
+            )
+            if valid_waypoint:
+                moving = asyncio.ensure_future(
+                    vehicle.goto_coordinates(next_pos)
+                )
+                while not moving.done():
+                    await asyncio.sleep(0.1)
+
+            # Take a fake radio measurement if configured
+            if self.fake_radio:
+                measurement = self.radio_emitter.get_power(vehicle.position)
+                print(f"Fake measurement: {measurement}")
+            # Otherwise take a real measurement
+            else:
+                # Open data buffer
+                f = open("/root/Power", "rb")
+                # unpack binary reading into a float
+                measurement_from_file = unpack("<f", f.read(4))
+                measurement = measurement_from_file[0]
+                # close the data buffer
+                f.close()
+                print(f"Real measurement: {measurement}")
+                
+            LAT_SEARCH.append( {'lat': vehicle.position.lat, 'power': measurement} )
+            
+        # Step 3: Go to latitude, longitude with highest signal power
+        print(LAT_SEARCH)
+        print(LON_SEARCH)
+        idx_max_lat = np.argmax([m['power'] for m in LAT_SEARCH])
+        idx_max_lon = np.argmax([m['power'] for m in LON_SEARCH])
+        wp_max = util.Coordinate(LAT_SEARCH[idx_max_lat]['lat'], LON_SEARCH[idx_max_lon]['lon'], SEARCH_ALTITUDE)
+
+        next_pos =  util.Coordinate(BOUND_SE['lat'], BOUND_SE['lon'], SEARCH_ALTITUDE)
+        (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
+            vehicle.position, next_pos)
+        )
+        if valid_waypoint:
+            moving = asyncio.ensure_future(
+                vehicle.goto_coordinates(next_pos)
+            )
+            while not moving.done():
+                await asyncio.sleep(0.1)
+
+            # Take a fake radio measurement if configured
+            if self.fake_radio:
+                measurement = self.radio_emitter.get_power(vehicle.position)
+                print(f"Fake measurement: {measurement}")
+            # Otherwise take a real measurement
+            else:
+                # Open data buffer
+                f = open("/root/Power", "rb")
+                # unpack binary reading into a float
+                measurement_from_file = unpack("<f", f.read(4))
+                measurement = measurement_from_file[0]
+                # close the data buffer
+                f.close()
+                print(f"Real measurement: {measurement}")
+
+        # Let's start flying west first 
         turning = asyncio.ensure_future(vehicle.set_heading( HEADINGS_LIST[self.heading_idx]  ))
 
         # wait for vehicle to finish turning
         while not turning.done():
             await asyncio.sleep(0.1)
 
-        return "go_forward"
-
-    @state(name="first_stage")
-    async def first_stage(self, vehicle: Drone):
-        approachdisc={"longitute":0.0,"latitute":0.0,"power":0.0}
-        approachdisc["longitute"]=vehicle.position.lon
-        approachdisc["latitute"]=vehicle.position.lat
-        approachdisc["power"]=self.radio_emitter.get_power(vehicle.position)
+        return "take_measurement"
 
 
 
