@@ -38,6 +38,11 @@ LON_SEARCH = []
 LAT_SEARCH = []
 SEARCH_STEPS = 10
 
+MAX_LON = BOUND_NE['lon']
+MIN_LON = BOUND_NW['lon']
+MAX_LAT = BOUND_NE['lat']
+MIN_LAT = BOUND_SE['lat']
+
 SEARCH_ALTITUDE = 30 # in meters
 
 def argmax(x):
@@ -197,6 +202,35 @@ class RoverSearch(StateMachine):
 
         # Step 2: Go to NW bound
         # waypoint_list = np.linspace(BOUND_SW['lat'], BOUND_NW['lat'], num=SEARCH_STEPS, endpoint=True)
+        next_pos =  Coordinate(BOUND_NW['lat'], BOUND_NW['lon'], SEARCH_ALTITUDE)
+        (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
+                        vehicle.position, next_pos
+        )
+        if valid_waypoint:
+            moving = asyncio.ensure_future(
+                vehicle.goto_coordinates(next_pos)
+            )
+            while not moving.done():
+                # Take a fake radio measurement if configured
+                if self.fake_radio:
+                    measurement = self.radio_emitter.get_power(vehicle.position)
+                    print(f"Fake measurement: {measurement}")
+                # Otherwise take a real measurement
+                else:
+                    # Open data buffer
+                    f = open("/root/Power", "rb")
+                    # unpack binary reading into a float
+                    measurement_from_file = unpack("<f", f.read(4))
+                    measurement = measurement_from_file[0]
+                    # close the data buffer
+                    f.close()
+                    print(f"Real measurement: {measurement}")
+            
+                LAT_SEARCH.append( {'lat': vehicle.position.lat, 'power': measurement} )
+
+                await asyncio.sleep(0.1)
+
+        """
         waypoint_list = [35.72688213, 35.72715193, 35.72742172, 35.72769152, 35.72796132,35.72823111, 35.72850091, 35.72877071, 35.7290405 , 35.7293103 ]
         for wp_lat in waypoint_list:
             next_pos =  Coordinate(wp_lat, BOUND_SW['lon'], SEARCH_ALTITUDE)
@@ -224,17 +258,18 @@ class RoverSearch(StateMachine):
                 # close the data buffer
                 f.close()
                 print(f"Real measurement: {measurement}")
-                
+        
             LAT_SEARCH.append( {'lat': vehicle.position.lat, 'power': measurement} )
-            
+        """
+  
         # Step 3: Go to latitude, longitude with highest signal power
         print(LAT_SEARCH)
         print(LON_SEARCH)
         idx_max_lat = argmax([m['power'] for m in LAT_SEARCH])
         idx_max_lon = argmax([m['power'] for m in LON_SEARCH])
-        wp_max = Coordinate(LAT_SEARCH[idx_max_lat]['lat'], LON_SEARCH[idx_max_lon]['lon'], SEARCH_ALTITUDE)
-
-        next_pos =  Coordinate(BOUND_SE['lat'], BOUND_SE['lon'], SEARCH_ALTITUDE)
+        
+        next_pos =  Coordinate(LAT_SEARCH[idx_max_lat]['lat'], LON_SEARCH[idx_max_lon]['lon'], SEARCH_ALTITUDE)
+        
         (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
             vehicle.position, next_pos
         )
@@ -365,6 +400,7 @@ class RoverSearch(StateMachine):
             cur_pos = vehicle.position
             next_pos = vehicle.position + move_vector
 
+            next_pos = vehicle.position + move_vector
 
             (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
                 cur_pos, next_pos
