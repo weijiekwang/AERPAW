@@ -2,7 +2,6 @@ import asyncio
 import math
 import datetime
 import csv
-import numpy as np
 
 
 from typing import List
@@ -41,6 +40,9 @@ LAT_SEARCH = []
 SEARCH_STEPS = 10
 
 SEARCH_ALTITUDE = 30 # in meters
+
+def argmax(x):
+    return max(range(len(x)), key=lambda i: x[i])
 
 class RoverSearch(StateMachine):
     last_measurement = float("-inf")
@@ -160,7 +162,8 @@ class RoverSearch(StateMachine):
             LON_SEARCH.append( {'lon': vehicle.position.lon, 'power': measurement} )
 
         # Step 1: Go to SW bound
-        waypoint_list = np.linspace(BOUND_SE['lon'], BOUND_SW['lon'], num=SEARCH_STEPS, endpoint=True)
+        # waypoint_list = np.linspace(BOUND_SE['lon'], BOUND_SW['lon'], num=SEARCH_STEPS, endpoint=True)
+        waypoint_list = [-78.69621515, -78.69658438, -78.69695362, -78.69732285, -78.69769209, -78.69806132, -78.69843056, -78.69879979, -78.69916902, -78.69953826]
         for wp_lon in waypoint_list:
             next_pos =  Coordinate(BOUND_SE['lat'], wp_lon, SEARCH_ALTITUDE)
             (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
@@ -194,7 +197,8 @@ class RoverSearch(StateMachine):
         LAT_SEARCH.append( {'lat': vehicle.position.lat, 'power': measurement} )
 
         # Step 2: Go to NW bound
-        waypoint_list = np.linspace(BOUND_SW['lat'], BOUND_NW['lat'], num=SEARCH_STEPS, endpoint=True)
+        # waypoint_list = np.linspace(BOUND_SW['lat'], BOUND_NW['lat'], num=SEARCH_STEPS, endpoint=True)
+        waypoint_list = [35.72688213, 35.72715193, 35.72742172, 35.72769152, 35.72796132,35.72823111, 35.72850091, 35.72877071, 35.7290405 , 35.7293103 ]
         for wp_lat in waypoint_list:
             next_pos =  Coordinate(wp_lat, BOUND_SW['lon'], SEARCH_ALTITUDE)
             (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
@@ -227,8 +231,8 @@ class RoverSearch(StateMachine):
         # Step 3: Go to latitude, longitude with highest signal power
         print(LAT_SEARCH)
         print(LON_SEARCH)
-        idx_max_lat = np.argmax([m['power'] for m in LAT_SEARCH])
-        idx_max_lon = np.argmax([m['power'] for m in LON_SEARCH])
+        idx_max_lat = argmax([m['power'] for m in LAT_SEARCH])
+        idx_max_lon = argmax([m['power'] for m in LON_SEARCH])
         wp_max = Coordinate(LAT_SEARCH[idx_max_lat]['lat'], LON_SEARCH[idx_max_lon]['lon'], SEARCH_ALTITUDE)
 
         next_pos =  Coordinate(BOUND_SE['lat'], BOUND_SE['lon'], SEARCH_ALTITUDE)
