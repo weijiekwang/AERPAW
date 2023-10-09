@@ -3,6 +3,7 @@ import math
 import datetime
 import csv
 
+
 from typing import List
 from struct import unpack
 from argparse import ArgumentParser
@@ -117,6 +118,15 @@ class RoverSearch(StateMachine):
             await asyncio.sleep(0.1)
 
         return "go_forward"
+
+    @state(name="first_stage")
+    async def first_stage(self, vehicle: Drone):
+        approachdisc={"longitute":0.0,"latitute":0.0,"power":0.0}
+        approachdisc["longitute"]=vehicle.position.lon
+        approachdisc["latitute"]=vehicle.position.lat
+        approachdisc["power"]=self.radio_emitter.get_power(vehicle.position)
+
+
 
     @state(name="go_forward")
     async def go_forward(self, vehicle: Vehicle):
