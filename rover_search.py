@@ -257,6 +257,8 @@ class RoverSearch(StateMachine):
                 f.close()
                 print(f"Real measurement: {measurement}")
 
+        print("Ending first stage at: ", vehicle.position.lat, vehicle.position.lon, measurement)
+        
         # Let's start flying west first 
         turning = asyncio.ensure_future(vehicle.set_heading( HEADINGS_LIST[self.heading_idx]  ))
 
