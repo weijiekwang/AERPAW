@@ -30,6 +30,11 @@ SOUTH = 180
 DEG_TOLERANCE = 10
 HEADINGS_LIST = [WEST, NORTH, EAST, SOUTH]
 
+Upperright=(-78.69621514941473,35.72931030026633)
+Upperleft=(-78.69953825817279,35.72931030026633)
+Lowerright=(-78.69621514941473,35.72688213193035)
+Lowerleft=(-78.69953825817279,35.72688213193035)
+
 SEARCH_ALTITUDE = 30 # in meters
 
 class RoverSearch(StateMachine):
@@ -125,6 +130,7 @@ class RoverSearch(StateMachine):
         approachdisc["longitute"]=vehicle.position.lon
         approachdisc["latitute"]=vehicle.position.lat
         approachdisc["power"]=self.radio_emitter.get_power(vehicle.position)
+
 
 
 
