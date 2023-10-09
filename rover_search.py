@@ -30,7 +30,6 @@ SOUTH = 180
 DEG_TOLERANCE = 10
 HEADINGS_LIST = [WEST, NORTH, EAST, SOUTH]
 
-
 BOUND_NE={'lon':-78.69621514941473, 'lat':35.72931030026633}
 BOUND_NW={'lon':-78.69953825817279, 'lat':35.72931030026633}
 BOUND_SE={'lon':-78.69621514941473, 'lat':35.72688213193035}
@@ -135,7 +134,7 @@ class RoverSearch(StateMachine):
         # Step 0: Go to SE bound
         next_pos =  Coordinate(BOUND_SE['lat'], BOUND_SE['lon'], SEARCH_ALTITUDE)
         (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-            vehicle.position, next_pos)
+            vehicle.position, next_pos
         )
         if valid_waypoint:
             moving = asyncio.ensure_future(
@@ -167,7 +166,7 @@ class RoverSearch(StateMachine):
         for wp_lon in waypoint_list:
             next_pos =  Coordinate(BOUND_SE['lat'], wp_lon, SEARCH_ALTITUDE)
             (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-                vehicle.position, next_pos)
+                vehicle.position, next_pos
             )
             if valid_waypoint:
                 moving = asyncio.ensure_future(
@@ -202,7 +201,7 @@ class RoverSearch(StateMachine):
         for wp_lat in waypoint_list:
             next_pos =  Coordinate(wp_lat, BOUND_SW['lon'], SEARCH_ALTITUDE)
             (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-                vehicle.position, next_pos)
+                vehicle.position, next_pos
             )
             if valid_waypoint:
                 moving = asyncio.ensure_future(
@@ -237,7 +236,7 @@ class RoverSearch(StateMachine):
 
         next_pos =  Coordinate(BOUND_SE['lat'], BOUND_SE['lon'], SEARCH_ALTITUDE)
         (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-            vehicle.position, next_pos)
+            vehicle.position, next_pos
         )
         if valid_waypoint:
             moving = asyncio.ensure_future(
