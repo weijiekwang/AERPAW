@@ -131,7 +131,7 @@ class RoverSearch(StateMachine):
         # 3. Go to longitude, latitude with highest signal power
 
         # Step 0: Go to SE bound
-        next_pos =  util.Coordinate(BOUND_SE['lat'], BOUND_SE['lon'], SEARCH_ALTITUDE)
+        next_pos =  Coordinate(BOUND_SE['lat'], BOUND_SE['lon'], SEARCH_ALTITUDE)
         (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
             vehicle.position, next_pos)
         )
@@ -162,7 +162,7 @@ class RoverSearch(StateMachine):
         # Step 1: Go to SW bound
         waypoint_list = np.linspace(BOUND_SE['lon'], BOUND_SW['lon'], num=SEARCH_STEPS, endpoint=True)
         for wp_lon in waypoint_list:
-            next_pos =  util.Coordinate(BOUND_SE['lat'], wp_lon, SEARCH_ALTITUDE)
+            next_pos =  Coordinate(BOUND_SE['lat'], wp_lon, SEARCH_ALTITUDE)
             (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
                 vehicle.position, next_pos)
             )
@@ -196,7 +196,7 @@ class RoverSearch(StateMachine):
         # Step 2: Go to NW bound
         waypoint_list = np.linspace(BOUND_SW['lat'], BOUND_NW['lat'], num=SEARCH_STEPS, endpoint=True)
         for wp_lat in waypoint_list:
-            next_pos =  util.Coordinate(wp_lat, BOUND_SW['lon'], SEARCH_ALTITUDE)
+            next_pos =  Coordinate(wp_lat, BOUND_SW['lon'], SEARCH_ALTITUDE)
             (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
                 vehicle.position, next_pos)
             )
@@ -229,9 +229,9 @@ class RoverSearch(StateMachine):
         print(LON_SEARCH)
         idx_max_lat = np.argmax([m['power'] for m in LAT_SEARCH])
         idx_max_lon = np.argmax([m['power'] for m in LON_SEARCH])
-        wp_max = util.Coordinate(LAT_SEARCH[idx_max_lat]['lat'], LON_SEARCH[idx_max_lon]['lon'], SEARCH_ALTITUDE)
+        wp_max = Coordinate(LAT_SEARCH[idx_max_lat]['lat'], LON_SEARCH[idx_max_lon]['lon'], SEARCH_ALTITUDE)
 
-        next_pos =  util.Coordinate(BOUND_SE['lat'], BOUND_SE['lon'], SEARCH_ALTITUDE)
+        next_pos =  Coordinate(BOUND_SE['lat'], BOUND_SE['lon'], SEARCH_ALTITUDE)
         (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
             vehicle.position, next_pos)
         )
@@ -258,7 +258,7 @@ class RoverSearch(StateMachine):
                 print(f"Real measurement: {measurement}")
 
         print("Ending first stage at: ", vehicle.position.lat, vehicle.position.lon, measurement)
-        
+
         # Let's start flying west first 
         turning = asyncio.ensure_future(vehicle.set_heading( HEADINGS_LIST[self.heading_idx]  ))
 
