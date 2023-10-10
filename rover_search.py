@@ -17,26 +17,13 @@ from aerpawlib.safetyChecker import SafetyCheckerClient
 
 from radio_power import RadioEmitter
 
-# step size between each radio measurement
-MIN_STEP_SIZE = 2.5 # never move less than this much in a step
-MAX_STEP_SIZE = 10 # never move more than this much in a step
-STEP_SIZE = 5  # when going forward - how far, in meters
-
-# move along four cardinal directions
-WEST = 270 # azimuth in degrees
-EAST = 90
-NORTH = 360
-SOUTH = 180
-DEG_TOLERANCE = 10
-HEADINGS_LIST = [WEST, NORTH, EAST, SOUTH]
+from bayes_opt import BayesianOptimization, UtilityFunction, SequentialDomainReductionTransformer
 
 BOUND_NE={'lon':-78.69621514941473, 'lat':35.72931030026633}
 BOUND_NW={'lon':-78.69953825817279, 'lat':35.72931030026633}
 BOUND_SE={'lon':-78.69621514941473, 'lat':35.72688213193035}
 BOUND_SW={'lon':-78.69953825817279, 'lat':35.72688213193035}
-LON_SEARCH = []
-LAT_SEARCH = []
-SEARCH_STEPS = 10
+
 
 MAX_LON = BOUND_NE['lon']
 MIN_LON = BOUND_NW['lon']
@@ -44,6 +31,11 @@ MAX_LAT = BOUND_NE['lat']
 MIN_LAT = BOUND_SE['lat']
 
 SEARCH_ALTITUDE = 30 # in meters
+
+STATE_TAKEOFF    = 0
+STATE_LON_SEARCH = 1
+STATE_LAT_SEARCH = 2
+STATE_STEADY     = 3
 
 def argmax(x):
     return max(range(len(x)), key=lambda i: x[i])
@@ -55,15 +47,27 @@ class RoverSearch(StateMachine):
     start_time = None
     search_time = None
 
-    total_steps = 0
-    steps_this_heading = 0
+    probe_state = STATE_TAKEOFF
+    measurement_list = []
+    # start at the SE bound
+    next_waypoint = {'lat': BOUND_SE['lat'], 'lon': BOUND_SE['lon']}
+    start_best_pos = {'lat': None, 'lon': None}
+    
+    # See https://github.com/bayesian-optimization/BayesianOptimization/blob/master/examples/advanced-tour.ipynb
+    # Note: using sequential domain reduction to improve convergence time
+    # https://github.com/bayesian-optimization/BayesianOptimization/blob/master/examples/domain_reduction.ipynb
+    optimizer = BayesianOptimization(
+      f=None,
+      pbounds={'lat': (MIN_LAT, MAX_LAT), 'lon': (MIN_LON, MAX_LON)},
+      verbose=0,
+      random_state=1,
+      allow_duplicate_points=True
+    )
 
-    # Keep track of current heading index
-    heading_idx = 0 
-
-    # Initially, bounds are None
-    # over time, we will discover bounds and add them here
-    bounds = {'w': None, 'e': None, 'n': None, 's': None}
+    # Note: change this utility function to manage the 
+    # exploration/exploitation tradeoff
+    # see: https://github.com/bayesian-optimization/BayesianOptimization/blob/master/examples/exploitation_vs_exploration.ipynb
+    utility = UtilityFunction(kind="ucb", kappa=2.5, xi=0.0)
 
     def initialize_args(self, extra_args: List[str]):
         """Parse arguments passed to vehicle script"""
@@ -126,371 +130,121 @@ class RoverSearch(StateMachine):
         await vehicle.takeoff(SEARCH_ALTITUDE)
         print("Took off")
 
-        return "first_stage"
-
-    @state(name="first_stage")
-    async def first_stage(self, vehicle: Drone):
-        # in the first stage, we should:
-        # 0. Go to SE bound
-        # 1. Move from SE to SW bound, find longitude with highest signal power
-        # 2. Move from SW to NW bound, find latitude with highest signal power
-        # 3. Go to longitude, latitude with highest signal power
-
-        # Step 0: Go to SE bound
-        next_pos =  Coordinate(BOUND_SE['lat'], BOUND_SE['lon'], SEARCH_ALTITUDE)
-        (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-            vehicle.position, next_pos
-        )
-        if valid_waypoint:
-            moving = asyncio.ensure_future(
-                vehicle.goto_coordinates(next_pos)
-            )
-            while not moving.done():
-                await asyncio.sleep(0.1)
-
-            # Take a fake radio measurement if configured
-            if self.fake_radio:
-                measurement = self.radio_emitter.get_power(vehicle.position)
-                print(f"Fake measurement: {measurement}")
-            # Otherwise take a real measurement
-            else:
-                # Open data buffer
-                f = open("/root/Power", "rb")
-                # unpack binary reading into a float
-                measurement_from_file = unpack("<f", f.read(4))
-                measurement = measurement_from_file[0]
-                # close the data buffer
-                f.close()
-                print(f"Real measurement: {measurement}")
-
-            LON_SEARCH.append( {'lon': vehicle.position.lon, 'power': measurement} )
-
-        # Step 1: Go to SW bound
-        # waypoint_list = np.linspace(BOUND_SE['lon'], BOUND_SW['lon'], num=SEARCH_STEPS, endpoint=True)
-        next_pos =  Coordinate(BOUND_SW['lat'], BOUND_SW['lon'], SEARCH_ALTITUDE)
-        (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-            vehicle.position, next_pos
-        )
-        if valid_waypoint:
-            moving = asyncio.ensure_future(
-                vehicle.goto_coordinates(next_pos)
-            )
-            while not moving.done():
-                # Take a fake radio measurement if configured
-                if self.fake_radio:
-                    measurement = self.radio_emitter.get_power(vehicle.position)
-                    print(f"Fake measurement: {measurement}")
-                # Otherwise take a real measurement
-                else:
-                    # Open data buffer
-                    f = open("/root/Power", "rb")
-                    # unpack binary reading into a float
-                    measurement_from_file = unpack("<f", f.read(4))
-                    measurement = measurement_from_file[0]
-                    # close the data buffer
-                    f.close()
-                    print(f"Real measurement: {measurement}")
-
-                LON_SEARCH.append( {'lon': vehicle.position.lon, 'power': measurement} )
-
-                await asyncio.sleep(0.1)
-
-        # at SW position, also add entry to latitude list
-        LAT_SEARCH.append( {'lat': vehicle.position.lat, 'power': measurement} )
-
-        # Step 2: Go to NW bound
-        # waypoint_list = np.linspace(BOUND_SW['lat'], BOUND_NW['lat'], num=SEARCH_STEPS, endpoint=True)
-        next_pos =  Coordinate(BOUND_NW['lat'], BOUND_NW['lon'], SEARCH_ALTITUDE)
-        (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-                        vehicle.position, next_pos
-        )
-        if valid_waypoint:
-            moving = asyncio.ensure_future(
-                vehicle.goto_coordinates(next_pos)
-            )
-            while not moving.done():
-                # Take a fake radio measurement if configured
-                if self.fake_radio:
-                    measurement = self.radio_emitter.get_power(vehicle.position)
-                    print(f"Fake measurement: {measurement}")
-                # Otherwise take a real measurement
-                else:
-                    # Open data buffer
-                    f = open("/root/Power", "rb")
-                    # unpack binary reading into a float
-                    measurement_from_file = unpack("<f", f.read(4))
-                    measurement = measurement_from_file[0]
-                    # close the data buffer
-                    f.close()
-                    print(f"Real measurement: {measurement}")
-            
-                LAT_SEARCH.append( {'lat': vehicle.position.lat, 'power': measurement} )
-
-                await asyncio.sleep(0.1)
+        return "probe"
 
 
-  
-        # Step 3: Go to latitude, longitude with highest signal power
-        print(LAT_SEARCH)
-        print(LON_SEARCH)
-        idx_max_lat = argmax([m['power'] for m in LAT_SEARCH])
-        idx_max_lon = argmax([m['power'] for m in LON_SEARCH])
-        
-        next_pos =  Coordinate(LAT_SEARCH[idx_max_lat]['lat'], LON_SEARCH[idx_max_lon]['lon'], SEARCH_ALTITUDE)
+    @state(name="register")
+    async def register(self, vehicle: Drone):
+        print("Now in register")
+        # register most recent measurements
+        for m in self.measurement_list:
+            print("Registering: ", m ) 
+            self.optimizer.register(params={'lat': m['lat'], 'lon': m['lon']}, target=m['power'])
 
-        (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-            vehicle.position, next_pos
-        )
-        if valid_waypoint:
-            moving = asyncio.ensure_future(
-                vehicle.goto_coordinates(next_pos)
-            )
-            while not moving.done():
-                await asyncio.sleep(0.1)
+        # see if we are in initial lon/lat search, or in steady state
+        if self.probe_state == STATE_TAKEOFF:
+            # we're at BOUND_SE now, start longitude search
+            self.measurement_list = []
+            self.next_waypoint = {'lat': BOUND_SW['lat'], 'lon': BOUND_SW['lon']}
+            self.probe_state = STATE_LON_SEARCH
+            print("Setting next state to LON_SEARCH")
+            return "probe"
+        elif self.probe_state == STATE_LON_SEARCH:
+            # get best longitude
+            idx_max_lon = argmax([m['power'] for m in self.measurement_list])
+            self.start_best_pos['lon'] = self.measurement_list[idx_max_lon]['lon']
+            # now start latitude search
+            self.measurement_list = []
+            self.next_waypoint = {'lat': BOUND_NW['lat'], 'lon': BOUND_NW['lon']}
+            self.probe_state = STATE_LAT_SEARCH
+            print("Setting next state to LAT_SEARCH")
+            return "probe"
+        elif self.probe_state == STATE_LAT_SEARCH:
+            # get best latitude
+            idx_max_lat = argmax([m['power'] for m in self.measurement_list])
+            self.start_best_pos['lat'] = self.measurement_list[idx_max_lat]['lat']
+            # now start steady state - first go to best position
+            self.measurement_list = []
+            self.next_waypoint = {'lat': self.start_best_pos['lat'], 'lon': self.start_best_pos['lon']}
+            self.probe_state = STATE_STEADY
+            print("Setting next state to STEADY")
+            return "probe"
 
-            # Take a fake radio measurement if configured
-            if self.fake_radio:
-                measurement = self.radio_emitter.get_power(vehicle.position)
-                print(f"Fake measurement: {measurement}")
-            # Otherwise take a real measurement
-            else:
-                # Open data buffer
-                f = open("/root/Power", "rb")
-                # unpack binary reading into a float
-                measurement_from_file = unpack("<f", f.read(4))
-                measurement = measurement_from_file[0]
-                # close the data buffer
-                f.close()
-                print(f"Real measurement: {measurement}")
+        elif self.probe_state == STATE_STEADY:
+            # Track the best location and measurement
+            max_estimate = self.optimizer.max
+            if max_estimate['target'] > self.best_measurement:
+                self.best_measurement = max_estimate['target']
+                self.best_pos = Coordinate(max_estimate['params']['lat'], max_estimate['params']['lon'], SEARCH_ALTITUDE)
 
-        print("Ending first stage at: ", vehicle.position.lat, vehicle.position.lon, measurement)
+            # save the positions and measurements if logging to file
+            if self.save_csv:
+                for m in self.measurement_list:
+                    position = Coordinate(m['lat'], m['lon'], SEARCH_ALTITUDE)
+                    self.csv_writer.writerow(
+                        [datetime.datetime.now() - self.start_time, m.lon, m.lat, m.alt, m['power'], self.best_pos.lat,self.best_pos.lon]
+                    )
 
-        # Let's start flying west first 
-        turning = asyncio.ensure_future(vehicle.set_heading( HEADINGS_LIST[self.heading_idx]  ))
+            # reset measurement list
+            self.measurement_list = []
+            return "suggest"
 
-        # wait for vehicle to finish turning
-        while not turning.done():
-            await asyncio.sleep(0.1)
+    @state(name="suggest")
+    async def suggest(self, vehicle: Drone):
 
-        return "take_measurement"
+        # suggest the next waypoint to visit
+        self.next_waypoint = self.optimizer.suggest(self.utility)
 
+        # go to next waypoint
+        return "probe"
 
+    @state(name="probe")
+    async def probe(self, vehicle: Drone):
 
-
-    @state(name="go_forward")
-    async def go_forward(self, vehicle: Vehicle):
-        # go forward and continually log the vehicle's position
-        print("Moving Forward")
-        print(f"Self Total steps: {self.total_steps} ")
-        print(f"Self Steps This Heading: {self.steps_this_heading}")
-        print(f"Vehicle heading: {vehicle.heading}")
-        print(f"Vehicle longitude: {vehicle.position.lon}")
-        print(f"Vehicle latitude: {vehicle.position.lat}")
-        print(self.bounds['n'])
-        print("Going on to code")
-        
-        self.total_steps = self.total_steps + 1
-        self.steps_this_heading = self.steps_this_heading + 1
-        
-        # use the current vehicle heading to move forward
-        heading = vehicle.heading
-        heading_rad = heading * 2 * math.pi / 360
-
-        safety_bound = 1
-        while True:
-            # decrease step size with total steps
-            # increase step size if we keep going in same direction
-            decay_factor =  20*math.exp(-1*self.total_steps/5)
-            change_factor = ((10+self.steps_this_heading)/10)
-
-            computed_step_size =  decay_factor*change_factor*STEP_SIZE
-            step_size = computed_step_size*safety_bound        
-            
-            step_size = max(step_size, MIN_STEP_SIZE)
-            step_size = min(step_size, MAX_STEP_SIZE)
-
-
-            #print(f"Heading: {heading}")
-            print(f"Step tracker: {self.steps_this_heading}, {self.total_steps}, {step_size}")
-
-            move_vector = VectorNED(
-                step_size * math.cos(heading_rad), step_size * math.sin(heading_rad), 0
-            )
-
-            # ensure the next location is inside the geofence
-            cur_pos = vehicle.position
-            next_pos = vehicle.position + move_vector
-
-            
-            # check distance between next position and bound
-            bound_dist = 1/1000
-            # we may have discovered a new bound, so update
-            if (  self.bounds['n']  and (( (NORTH % 360) <= heading <= ((NORTH + DEG_TOLERANCE) % 360) ) or
-                ( (NORTH - DEG_TOLERANCE) <= heading <= (NORTH) ))  ):
-                if (self.bounds['n']):
-                    bound_dist =  self.bounds['n'] - next_pos.lat
-
-            elif ( self.bounds['e'] and (EAST - DEG_TOLERANCE) <= heading <= (EAST + DEG_TOLERANCE) ) :
-                bound_dist = self.bounds['e'] - next_pos.lon
-
-            elif (  self.bounds['s'] and (SOUTH - DEG_TOLERANCE) <= heading <= (SOUTH + DEG_TOLERANCE) ) :
-                bound_dist = next_pos.lat - self.bounds['s']
-
-            elif ( self.bounds['w'] and (WEST - DEG_TOLERANCE) <= heading <= (WEST + DEG_TOLERANCE) ) :
-                bound_dist = next_pos.lon - self.bounds['w']
-
-            bound_factor = 1000*bound_dist
-            if (bound_dist > 0.0005):
-                bound_factor = 1
-            elif bound_dist > 0: 
-                bound_factor = 0.8
-            else:
-                bound_factor = 0.2
-
-            print(f"Bound dist, Bound Factor: {bound_dist, bound_factor}")
-
-            computed_step_size =  bound_factor*decay_factor*change_factor*STEP_SIZE
-            step_size = computed_step_size*safety_bound        
-            
-            step_size = max(step_size, MIN_STEP_SIZE)
-            step_size = min(step_size, MAX_STEP_SIZE)
-
-
-            # for OG rover search uncomment this line
-            #step_size = STEP_SIZE*safety_bound
-
-
-            move_vector = VectorNED(
-                step_size * math.cos(heading_rad), step_size * math.sin(heading_rad), 0
-            )
-
-            # ensure the next location is inside the geofence
-            cur_pos = vehicle.position
-            next_pos = vehicle.position + move_vector
-
-            next_pos = vehicle.position + move_vector
-
-            (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-                cur_pos, next_pos
-            )
-            
-            # if the next location violates the geofence 
-            if not valid_waypoint:
-                # if we can't go there - take a smaller step in same direction 
-                print("Can't go there:")
-                print(msg)
-                safety_bound = safety_bound/2
-                print("Halving step size so as not to violate geofence")
-                # if that smaller step is less than the min, go in a different drection instead
-                if computed_step_size*safety_bound < MIN_STEP_SIZE:
-                    print("Turning so as not to violate geofence")
-                    return "turn_right_90"
-            else:
-                break        
-        # otherwise move forward to the next location
-        moving = asyncio.ensure_future(
-            vehicle.goto_coordinates(vehicle.position + move_vector)
-        )
-
-        # wait until the vehicle is done moving
-        while not moving.done():
-            await asyncio.sleep(0.1)
-
-        await moving
-        return "take_measurement"
-
-    @state(name="turn_right_90")
-    async def turn_right_90(self, vehicle: Drone):
-        # turn right before moving forward again
-        print("turning")
-        heading = vehicle.heading
-
-        # turn - go to next heading in list
-        self.heading_idx = (self.heading_idx + 1) % 4
-        new_heading = HEADINGS_LIST[self.heading_idx]
-
-        # we may have discovered a new bound, so update
-        if ( ( (NORTH % 360) <= heading <= ((NORTH + DEG_TOLERANCE) % 360) ) or
-             ( (NORTH - DEG_TOLERANCE) <= heading <= (NORTH) )  ):
-            print(f"Heading was {heading} so discovered new bound moving N")
-            if ( (self.bounds['n'] is None) or (vehicle.position.lat < self.bounds['n']) ): 
-                print(f"Updating bound from {self.bounds['n']} to {vehicle.position.lat}" )
-                self.bounds['n'] = vehicle.position.lat
-
-        elif ( (EAST - DEG_TOLERANCE) <= heading <= (EAST + DEG_TOLERANCE) ) :
-            print(f"Heading was {heading} so discovered new bound moving E")
-            if ( (self.bounds['e'] is None) or (vehicle.position.lon < self.bounds['e']) ): 
-                print(f"Updating bound from {self.bounds['e']} to {vehicle.position.lon}" )
-                self.bounds['e'] = vehicle.position.lon
-
-        elif ( (SOUTH - DEG_TOLERANCE) <= heading <= (SOUTH + DEG_TOLERANCE) ) :
-            print(f"Heading was {heading} so discovered new bound moving S")
-            if ( (self.bounds['s'] is None) or (vehicle.position.lat > self.bounds['s']) ): 
-                print(f"Updating bound from {self.bounds['s']} to {vehicle.position.lat}" )
-                self.bounds['s'] = vehicle.position.lat
-
-        elif ( (WEST - DEG_TOLERANCE) <= heading <= (WEST + DEG_TOLERANCE) ) :
-            print(f"Heading was {heading} so discovered new bound moving W")
-            if ( (self.bounds['w'] is None) or (vehicle.position.lon > self.bounds['w']) ): 
-                print(f"Updating bound from {self.bounds['w']} to {vehicle.position.lon}" )
-                self.bounds['w'] = vehicle.position.lon
-
-        self.steps_this_heading = 0
-        turning = asyncio.ensure_future(vehicle.set_heading(new_heading))
-
-        # wait for vehicle to finish turning
-        while not turning.done():
-            await asyncio.sleep(0.1)
-
-        print(f"Vehicle heading after turning: {vehicle.heading}, should be {new_heading}")
-
-        await turning
-        return "go_forward"
-
-    @timed_state(name="take_measurement", duration=5)
-    async def take_measurement(self, vehicle: Drone):
-        # Take a radio power measurement and decide to move forward or turn
-
-        # Take a fake radio measurement if configured
-        if self.fake_radio:
-            measurement = self.radio_emitter.get_power(vehicle.position)
-            print(f"Fake measurement: {measurement}")
-        # Otherwise take a real measurement
-        else:
-            # Open data buffer
-            f = open("/root/Power", "rb")
-            # unpack binary reading into a float
-            measurement_from_file = unpack("<f", f.read(4))
-            measurement = measurement_from_file[0]
-            # close the data buffer
-            f.close()
-            print(f"Real measurement: {measurement}")
-
-        # If the radio measurement has increased, keep moving forward
-        if measurement >= self.last_measurement:
-            next = "go_forward"
-        # Otherwise turn
-        else:
-            next = "turn_right_90"
-        self.last_measurement = measurement
-
-        # Track the best location and measurement
-        if measurement > self.best_measurement:
-            self.best_measurement = measurement
-            self.best_pos = vehicle.position
-
-        # save the current position and measurement if logging to file
-        if self.save_csv:
-            position = vehicle.position
-            self.csv_writer.writerow(
-                [datetime.datetime.now() - self.start_time, position.lon, position.lat, position.alt, measurement, self.best_pos.lat,self.best_pos.lon]
-            )
-
-        # If the search time has ended, end the script
+        # stop if search time is over
         if datetime.datetime.now() - self.start_time > self.search_time:
-            next = "end"
+            return "end"
 
-        return next
+        print("Going to: ", self.next_waypoint['lat'], self.next_waypoint['lon'], SEARCH_ALTITUDE )
+        # go to the waypoint, probe along the way
+        next_pos =  Coordinate(self.next_waypoint['lat'], self.next_waypoint['lon'], SEARCH_ALTITUDE)
+        (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
+            vehicle.position, next_pos
+        )
+        if valid_waypoint:
+            moving = asyncio.ensure_future(
+                vehicle.goto_coordinates(next_pos)
+            )
+            while not moving.done():
+
+                # Take a fake radio measurement if configured
+                if self.fake_radio:
+                    measurement = self.radio_emitter.get_power(vehicle.position)
+                    #print(f"Fake measurement: {measurement}")
+                # Otherwise take a real measurement
+                else:
+                    # Open data buffer
+                    f = open("/root/Power", "rb")
+                    # unpack binary reading into a float
+                    measurement_from_file = unpack("<f", f.read(4))
+                    measurement = measurement_from_file[0]
+                    # close the data buffer
+                    f.close()
+                    #print(f"Real measurement: {measurement}")
+
+                self.measurement_list.append( 
+                    {'lat': vehicle.position.lat, 'lon': vehicle.position.lon, 'power': measurement} 
+                    )
+                print("Measured: ",
+                    {'lat': vehicle.position.lat, 'lon': vehicle.position.lon, 'power': measurement} 
+                    )
+                
+                await asyncio.sleep(0.1)
+            print("Now at: ", vehicle.position.lat, vehicle.position.lon, measurement )
+
+                
+        return "register"
+
 
     @state(name="end")
     async def end(self, vehicle: Drone):
