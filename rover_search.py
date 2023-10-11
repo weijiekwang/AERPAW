@@ -148,9 +148,9 @@ class RoverSearch(StateMachine):
         idx = np.argmax([m['power'] for m in self.measurement_list])
         self.optimizer.register(params={'lat': self.measurement_list[idx]['lat'], 'lon': self.measurement_list[idx]['lon']}, target=self.measurement_list[idx]['power'])
         # register a random sample of values
-        n_samples = int(np.min(5, len(self.measurement_list)/2))
-        for m in np.random.choice(self.measurement_list, size=n_samples, replace=False):
-            self.optimizer.register(params={'lat': m['lat'], 'lon': m['lon']}, target=m['power'])
+        #n_samples = int(np.min(5, len(self.measurement_list)/2))
+        #for m in np.random.choice(self.measurement_list, size=n_samples, replace=False):
+        #    self.optimizer.register(params={'lat': m['lat'], 'lon': m['lon']}, target=m['power'])
         # register all samples
         #for m in self.measurement_list:
         #    self.optimizer.register(params={'lat': m['lat'], 'lon': m['lon']}, target=m['power'])
