@@ -19,6 +19,7 @@ from radio_power import RadioEmitter
 
 import numpy as np
 from bayes_opt import BayesianOptimization, UtilityFunction, SequentialDomainReductionTransformer
+from sklearn.gaussian_process.kernels import Matern, WhiteKernel
 
 BOUND_NE={'lon':-78.69621514941473, 'lat':35.72931030026633}
 BOUND_NW={'lon':-78.69953825817279, 'lat':35.72931030026633}
@@ -31,7 +32,7 @@ MIN_LON = BOUND_NW['lon']
 MAX_LAT = BOUND_NE['lat']
 MIN_LAT = BOUND_SE['lat']
 
-SEARCH_ALTITUDE = 80 # in meters
+SEARCH_ALTITUDE = 50 # in meters
 
 STATE_TAKEOFF    = 0
 STATE_LON_SEARCH = 1
@@ -70,6 +71,10 @@ class RoverSearch(StateMachine):
     # exploration/exploitation tradeoff
     # see: https://github.com/bayesian-optimization/BayesianOptimization/blob/master/examples/exploitation_vs_exploration.ipynb
     utility = UtilityFunction(kind="poi", xi=1e-1)
+
+    # set the kernel, alpha parameter
+    kernel = Matern(length_scale=1, nu=2.5) # + WhiteKernel(noise_level=0.001)
+    optimizer._gp.set_params(kernel = kernel)
     optimizer._gp.set_params(alpha=1e-3)
 
     with open('gaussian_process.pickle', 'wb') as handle:
@@ -179,6 +184,7 @@ class RoverSearch(StateMachine):
             self.start_best_pos['lat'] = self.measurement_list[idx_max_lat]['lat']
             # set best position now - to save time
             self.best_pos = Coordinate(self.start_best_pos['lat'], self.start_best_pos['lon'], SEARCH_ALTITUDE)
+            print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, self.best_measurement, datetime.datetime.now() - self.start_time)
             # now start steady state - first go to best position
             self.measurement_list = []
             self.next_waypoint = {'lat': self.start_best_pos['lat'], 'lon': self.start_best_pos['lon']}
@@ -192,7 +198,7 @@ class RoverSearch(StateMachine):
             if max_estimate['target'] > self.best_measurement:
                 self.best_measurement = max_estimate['target']
                 self.best_pos = Coordinate(max_estimate['params']['lat'], max_estimate['params']['lon'], SEARCH_ALTITUDE)
-            print("Position estimate: ", max_estimate['params']['lat'], max_estimate['params']['lon'], self.best_measurement, datetime.datetime.now() - self.start_time)
+            print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, self.best_measurement, datetime.datetime.now() - self.start_time)
 
             # save the positions and measurements if logging to file
             if self.save_csv:
@@ -268,9 +274,22 @@ class RoverSearch(StateMachine):
         print(
             f"Best rover location estimate {self.best_pos.lat, self.best_pos.lon} with measurement {self.best_measurement} after {datetime.datetime.now()-self.start_time} minutes"
         )
+
+        xvalues = np.linspace(MIN_LAT, MAX_LAT, num=500)
+        yvalues = np.linspace(MIN_LON, MAX_LON, num=500)
+        a,b = np.meshgrid(xvalues,yvalues)
+        positions = np.vstack([a.ravel(), b.ravel()])
+        x_test = (np.array(positions)).T
+        y_test = self.optimizer._gp.predict(x_test)
+        idx_max = np.argmax(y_test)
+        print(
+            f"Max of GP estimate {x_test[idx_max,0], x_test[idx_max,1]} with predicted measurement {y_test[idx_max]}"
+        )
         home_coords = Coordinate(
             vehicle.home_coords.lat, vehicle.home_coords.lon, vehicle.position.alt
         )
+
+
 
         with open('gaussian_process.pickle', 'wb') as handle:
             pickle.dump(self.optimizer._gp, handle)
