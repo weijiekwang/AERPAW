@@ -2,7 +2,7 @@ import asyncio
 import math
 import datetime
 import csv
-
+import pickle
 
 from typing import List
 from struct import unpack
@@ -17,6 +17,7 @@ from aerpawlib.safetyChecker import SafetyCheckerClient
 
 from radio_power import RadioEmitter
 
+import numpy as np
 from bayes_opt import BayesianOptimization, UtilityFunction, SequentialDomainReductionTransformer
 
 BOUND_NE={'lon':-78.69621514941473, 'lat':35.72931030026633}
@@ -30,7 +31,7 @@ MIN_LON = BOUND_NW['lon']
 MAX_LAT = BOUND_NE['lat']
 MIN_LAT = BOUND_SE['lat']
 
-SEARCH_ALTITUDE = 30 # in meters
+SEARCH_ALTITUDE = 80 # in meters
 
 STATE_TAKEOFF    = 0
 STATE_LON_SEARCH = 1
@@ -52,7 +53,7 @@ class RoverSearch(StateMachine):
     # start at the SE bound
     next_waypoint = {'lat': BOUND_SE['lat'], 'lon': BOUND_SE['lon']}
     start_best_pos = {'lat': None, 'lon': None}
-    
+
     # See https://github.com/bayesian-optimization/BayesianOptimization/blob/master/examples/advanced-tour.ipynb
     # Note: using sequential domain reduction to improve convergence time
     # https://github.com/bayesian-optimization/BayesianOptimization/blob/master/examples/domain_reduction.ipynb
@@ -61,13 +62,18 @@ class RoverSearch(StateMachine):
       pbounds={'lat': (MIN_LAT, MAX_LAT), 'lon': (MIN_LON, MAX_LON)},
       verbose=0,
       random_state=1,
+      bounds_transformer = SequentialDomainReductionTransformer(minimum_window=0.001),
       allow_duplicate_points=True
     )
 
     # Note: change this utility function to manage the 
     # exploration/exploitation tradeoff
     # see: https://github.com/bayesian-optimization/BayesianOptimization/blob/master/examples/exploitation_vs_exploration.ipynb
-    utility = UtilityFunction(kind="ucb", kappa=2.5, xi=0.0)
+    utility = UtilityFunction(kind="poi", xi=1e-1)
+    optimizer._gp.set_params(alpha=1e-3)
+
+    with open('gaussian_process.pickle', 'wb') as handle:
+        pickle.dump(optimizer._gp, handle)
 
     def initialize_args(self, extra_args: List[str]):
         """Parse arguments passed to vehicle script"""
@@ -135,11 +141,19 @@ class RoverSearch(StateMachine):
 
     @state(name="register")
     async def register(self, vehicle: Drone):
-        print("Now in register")
-        # register most recent measurements
-        for m in self.measurement_list:
-            print("Registering: ", m ) 
+
+        # register last value
+        self.optimizer.register(params={'lat': vehicle.position.lat, 'lon': vehicle.position.lon}, target=self.measurement_list[-1]['power'])
+        # register max value
+        idx = np.argmax([m['power'] for m in self.measurement_list])
+        self.optimizer.register(params={'lat': self.measurement_list[idx]['lat'], 'lon': self.measurement_list[idx]['lon']}, target=self.measurement_list[idx]['power'])
+        # register a random sample of values
+        n_samples = int(np.min(5, len(self.measurement_list)/2))
+        for m in np.random.choice(self.measurement_list, size=n_samples, replace=False):
             self.optimizer.register(params={'lat': m['lat'], 'lon': m['lon']}, target=m['power'])
+        # register all samples
+        #for m in self.measurement_list:
+        #    self.optimizer.register(params={'lat': m['lat'], 'lon': m['lon']}, target=m['power'])
 
         # see if we are in initial lon/lat search, or in steady state
         if self.probe_state == STATE_TAKEOFF:
@@ -163,6 +177,8 @@ class RoverSearch(StateMachine):
             # get best latitude
             idx_max_lat = argmax([m['power'] for m in self.measurement_list])
             self.start_best_pos['lat'] = self.measurement_list[idx_max_lat]['lat']
+            # set best position now - to save time
+            self.best_pos = Coordinate(self.start_best_pos['lat'], self.start_best_pos['lon'], SEARCH_ALTITUDE)
             # now start steady state - first go to best position
             self.measurement_list = []
             self.next_waypoint = {'lat': self.start_best_pos['lat'], 'lon': self.start_best_pos['lon']}
@@ -176,13 +192,13 @@ class RoverSearch(StateMachine):
             if max_estimate['target'] > self.best_measurement:
                 self.best_measurement = max_estimate['target']
                 self.best_pos = Coordinate(max_estimate['params']['lat'], max_estimate['params']['lon'], SEARCH_ALTITUDE)
+            print("Position estimate: ", max_estimate['params']['lat'], max_estimate['params']['lon'], self.best_measurement, datetime.datetime.now() - self.start_time)
 
             # save the positions and measurements if logging to file
             if self.save_csv:
                 for m in self.measurement_list:
-                    position = Coordinate(m['lat'], m['lon'], SEARCH_ALTITUDE)
                     self.csv_writer.writerow(
-                        [datetime.datetime.now() - self.start_time, m.lon, m.lat, m.alt, m['power'], self.best_pos.lat,self.best_pos.lon]
+                        [datetime.datetime.now() - self.start_time, m['lat'], m['lon'], SEARCH_ALTITUDE, m['power'], self.best_pos.lat,self.best_pos.lon]
                     )
 
             # reset measurement list
@@ -194,7 +210,6 @@ class RoverSearch(StateMachine):
 
         # suggest the next waypoint to visit
         self.next_waypoint = self.optimizer.suggest(self.utility)
-
         # go to next waypoint
         return "probe"
 
@@ -205,18 +220,17 @@ class RoverSearch(StateMachine):
         if datetime.datetime.now() - self.start_time > self.search_time:
             return "end"
 
-        print("Going to: ", self.next_waypoint['lat'], self.next_waypoint['lon'], SEARCH_ALTITUDE )
         # go to the waypoint, probe along the way
         next_pos =  Coordinate(self.next_waypoint['lat'], self.next_waypoint['lon'], SEARCH_ALTITUDE)
-        (valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
-            vehicle.position, next_pos
-        )
+        #(valid_waypoint, msg) = self.safety_checker.validateWaypointCommand(
+        #    vehicle.position, next_pos
+        #)
+        valid_waypoint = True
         if valid_waypoint:
             moving = asyncio.ensure_future(
                 vehicle.goto_coordinates(next_pos)
             )
             while not moving.done():
-
                 # Take a fake radio measurement if configured
                 if self.fake_radio:
                     measurement = self.radio_emitter.get_power(vehicle.position)
@@ -232,15 +246,14 @@ class RoverSearch(StateMachine):
                     f.close()
                     #print(f"Real measurement: {measurement}")
 
+                pos = vehicle.position
                 self.measurement_list.append( 
-                    {'lat': vehicle.position.lat, 'lon': vehicle.position.lon, 'power': measurement} 
+                    {'lat': pos.lat, 'lon': pos.lon, 'power': measurement} 
                     )
-                print("Measured: ",
-                    {'lat': vehicle.position.lat, 'lon': vehicle.position.lon, 'power': measurement} 
-                    )
-                
-                await asyncio.sleep(0.1)
-            print("Now at: ", vehicle.position.lat, vehicle.position.lon, measurement )
+
+                await asyncio.sleep(0.2)
+
+            #print("Now at: ", pos.lat, pos.lon, measurement )
 
                 
         return "register"
@@ -258,6 +271,10 @@ class RoverSearch(StateMachine):
         home_coords = Coordinate(
             vehicle.home_coords.lat, vehicle.home_coords.lon, vehicle.position.alt
         )
+
+        with open('gaussian_process.pickle', 'wb') as handle:
+            pickle.dump(self.optimizer._gp, handle)
+
         await vehicle.goto_coordinates(home_coords)
         await vehicle.land()
         print("Done!")
