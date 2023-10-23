@@ -73,9 +73,9 @@ class RoverSearch(StateMachine):
     utility = UtilityFunction(kind="poi", xi=1e-1)
 
     # set the kernel, alpha parameter
-    kernel = Matern(length_scale=1, nu=2.5) # + WhiteKernel(noise_level=0.001)
+    kernel = Matern(length_scale=1, nu=1.5) # + WhiteKernel(noise_level=0.001)
     optimizer._gp.set_params(kernel = kernel)
-    optimizer._gp.set_params(alpha=1e-3)
+    optimizer._gp.set_params(alpha=(1e-5,1e5))
 
     with open('gaussian_process.pickle', 'wb') as handle:
         pickle.dump(optimizer._gp, handle)
