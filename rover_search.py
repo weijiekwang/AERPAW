@@ -19,7 +19,7 @@ from radio_power import RadioEmitter
 
 import numpy as np
 from bayes_opt import BayesianOptimization, UtilityFunction, SequentialDomainReductionTransformer
-from sklearn.gaussian_process.kernels import Matern, WhiteKernel
+from sklearn.gaussian_process.kernels import Matern, WhiteKernel, RBF, RationalQuadratic, ExpSineSquared, DotProduct
 
 BOUND_NE={'lon':-78.69621514941473, 'lat':35.72931030026633}
 BOUND_NW={'lon':-78.69953825817279, 'lat':35.72931030026633}
@@ -70,12 +70,12 @@ class RoverSearch(StateMachine):
     # Note: change this utility function to manage the 
     # exploration/exploitation tradeoff
     # see: https://github.com/bayesian-optimization/BayesianOptimization/blob/master/examples/exploitation_vs_exploration.ipynb
-    utility = UtilityFunction(kind="poi", xi=1e-1)
+    utility = UtilityFunction(kind="poi", xi=1e-4)
 
     # set the kernel, alpha parameter
-    kernel = Matern(length_scale=1, nu=1.5) # + WhiteKernel(noise_level=0.001)
+    kernel = Matern()  + WhiteKernel(noise_level=0.5)
     optimizer._gp.set_params(kernel = kernel)
-    optimizer._gp.set_params(alpha=(1e-5,1e5))
+    #optimizer._gp.set_params(alpha=1e-3)
 
     with open('gaussian_process.pickle', 'wb') as handle:
         pickle.dump(optimizer._gp, handle)
