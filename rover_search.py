@@ -39,6 +39,10 @@ STATE_LON_SEARCH = 1
 STATE_LAT_SEARCH = 2
 STATE_STEADY     = 3
 
+SIG_BOUND = 42
+LAT_BOUND_SLACK = MAX_LAT - (MAX_LAT-MIN_LAT)*0.02
+LON_BOUND_SLACK = MIN_LON + (MAX_LON-MIN_LON)*0.02
+
 def argmax(x):
     return max(range(len(x)), key=lambda i: x[i])
 
@@ -70,10 +74,10 @@ class RoverSearch(StateMachine):
     # Note: change this utility function to manage the 
     # exploration/exploitation tradeoff
     # see: https://github.com/bayesian-optimization/BayesianOptimization/blob/master/examples/exploitation_vs_exploration.ipynb
-    utility = UtilityFunction(kind="poi", xi=1e-4)
+    utility = UtilityFunction(kind="ucb", kappa=1)
 
     # set the kernel, alpha parameter
-    kernel = Matern()  + WhiteKernel(noise_level=0.5)
+    kernel = Matern(length_scale = 1.0, nu = 1.5)  + WhiteKernel(noise_level=0.5)
     optimizer._gp.set_params(kernel = kernel)
     #optimizer._gp.set_params(alpha=1e-3)
 
@@ -199,6 +203,10 @@ class RoverSearch(StateMachine):
                 self.best_measurement = max_estimate['target']
                 self.best_pos = Coordinate(max_estimate['params']['lat'], max_estimate['params']['lon'], SEARCH_ALTITUDE)
             print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, self.best_measurement, datetime.datetime.now() - self.start_time)
+
+            # check if drone is out of bounds:
+            if (self.best_measurement < SIG_BOUND) and ( ( LAT_BOUND_SLACK <= self.best_pos.lat <=  MAX_LAT ) or (  MIN_LON <= self.best_pos.lon <= LON_BOUND_SLACK )  ):
+                print("Rover is probably out of bounds")
 
             # save the positions and measurements if logging to file
             if self.save_csv:
