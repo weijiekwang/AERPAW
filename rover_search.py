@@ -142,7 +142,7 @@ class RoverSearch(StateMachine):
     @state(name="start", first=True)
     async def start(self, vehicle: Drone):
 
-        while not vehicle.armed():
+        while not vehicle.armed:
             await asyncio.sleep(0.01)
 
         # record the start time of the search
