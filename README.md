@@ -47,6 +47,7 @@ Install dependencies for rover search:
 
 ```
 python3 -m pip install --target=/root/Profiles/vehicle_control/RoverSearch bayesian-optimization
+python3 -m pip install --target=/root/Profiles/vehicle_control/RoverSearch geopy
 ```
 
 Transfer over the latest rover search code:
