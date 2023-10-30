@@ -8,6 +8,61 @@
 
 ### Prepare UAV and UGV resources for an experiment
 
+Set up the radio transmitter on the rover:
+
+```
+cd /root/Profiles/ProfileScripts/Radio 
+cp Samples/startGNURadio-ChannelSounder-TX.sh startRadio.sh 
+```
+
+Set up the GPS logger on the rover:
+
+```
+cd /root/Profiles/ProfileScripts/Vehicle
+cp Samples/startGPSLogger.sh Vehicle/startVehicle.sh
+```
+
+Open the overall experiment script for editing:
+
+```
+vim /root/startExperiment.sh # or whatever text editor
+```
+and un-comment the `./Vehicle/startVehicle.sh` and `./Radio/startRadio.sh` lines. Save and close.
+
+Set up the radio transmitter on the UAV:
+
+```
+cd /root/Profiles/ProfileScripts/Radio 
+cp Samples/startGNURadio-ChannelSounder-RX.sh startRadio.sh 
+```
+
+Set up the rover search on the UAV:
+
+```
+cd /root/Profiles/ProfileScripts/Vehicle
+cp Samples/startRoverSearch.sh Vehicle/startVehicle.sh
+```
+
+Install dependencies for rover search:
+
+```
+python3 -m pip install --target=/root/Profiles/vehicle_control/RoverSearch bayesian-optimization
+```
+
+Transfer over the latest rover search code:
+
+```
+wget https://raw.githubusercontent.com/weijiekwang/AERPAW/main/rover_search.py -O /root/Profiles/vehicle_control/RoverSearch/rover_search.py
+```
+
+Open the overall experiment script for editing:
+
+```
+sudo vim /root/startExperiment.sh # or whatever text editor you use
+```
+
+and un-comment the `./Vehicle/startVehicle.sh` and `./Radio/startRadio.sh lines`. Save and close.
+
 ### Run baseline rover search experiment
 
 ### Run our rover search experiment
