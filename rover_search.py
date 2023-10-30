@@ -21,6 +21,8 @@ import numpy as np
 from bayes_opt import BayesianOptimization, UtilityFunction, SequentialDomainReductionTransformer
 from sklearn.gaussian_process.kernels import Matern, WhiteKernel, RBF, RationalQuadratic, ExpSineSquared, DotProduct
 
+import geopy
+
 BOUND_NE={'lon':-78.69621514941473, 'lat':35.72931030026633}
 BOUND_NW={'lon':-78.69953825817279, 'lat':35.72931030026633}
 BOUND_SE={'lon':-78.69621514941473, 'lat':35.72688213193035}
@@ -38,10 +40,13 @@ STATE_TAKEOFF    = 0
 STATE_LON_SEARCH = 1
 STATE_LAT_SEARCH = 2
 STATE_STEADY     = 3
+STATE_OOB        = 4
 
-SIG_BOUND = 42
+SIG_BOUND = 43
+SIG_BOUND_LOW = 36
 LAT_BOUND_SLACK = MAX_LAT - (MAX_LAT-MIN_LAT)*0.02
 LON_BOUND_SLACK = MIN_LON + (MAX_LON-MIN_LON)*0.02
+OOB_PROBE_STATE_SEQ  = [1, 2, 1, 3, 4]
 
 def argmax(x):
     return max(range(len(x)), key=lambda i: x[i])
@@ -52,6 +57,8 @@ class RoverSearch(StateMachine):
     best_pos: Coordinate = None
     start_time = None
     search_time = None
+
+    oob_probe_state_idx = 0
 
     probe_state = STATE_TAKEOFF
     measurement_list = []
@@ -197,17 +204,21 @@ class RoverSearch(StateMachine):
             return "probe"
 
         elif self.probe_state == STATE_STEADY:
-            # Track the best location and measurement
-            max_estimate = self.optimizer.max
-            if max_estimate['target'] > self.best_measurement:
-                self.best_measurement = max_estimate['target']
-                self.best_pos = Coordinate(max_estimate['params']['lat'], max_estimate['params']['lon'], SEARCH_ALTITUDE)
-            print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, self.best_measurement, datetime.datetime.now() - self.start_time)
 
-            # check if drone is out of bounds:
-            if (self.best_measurement < SIG_BOUND) and ( ( LAT_BOUND_SLACK <= self.best_pos.lat <=  MAX_LAT ) or (  MIN_LON <= self.best_pos.lon <= LON_BOUND_SLACK )  ):
+            # check if rover is out of bounds:
+            if (self.best_measurement > SIG_BOUND) and ( ( LAT_BOUND_SLACK <= self.best_pos.lat <=  MAX_LAT ) or (  MIN_LON <= self.best_pos.lon <= LON_BOUND_SLACK )  ):
                 print("Rover is probably out of bounds")
+                self.probe_state = STATE_OOB
+                self.next_waypoint = {'lat': self.start_best_pos['lat'], 'lon': self.start_best_pos['lon']}
 
+            else:
+                # Track the best location and measurement
+                max_estimate = self.optimizer.max
+                if max_estimate['target'] > self.best_measurement:
+                    self.best_measurement = max_estimate['target']
+                    self.best_pos = Coordinate(max_estimate['params']['lat'], max_estimate['params']['lon'], SEARCH_ALTITUDE)
+                print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, self.best_measurement, datetime.datetime.now() - self.start_time)
+                
             # save the positions and measurements if logging to file
             if self.save_csv:
                 for m in self.measurement_list:
@@ -218,6 +229,44 @@ class RoverSearch(StateMachine):
             # reset measurement list
             self.measurement_list = []
             return "suggest"
+    
+        elif self.probe_state == STATE_OOB:
+
+            # if we think the rover is OOB - 
+
+
+            # if we think the rover is in the N part of the area
+            if self.oob_probe_state_idx==0:
+                pass
+            
+            elif self.oob_probe_state_idx==1:
+
+                #  - measure signal strength at different LAT values and estimate distance
+
+                # get measurements that are in linear range
+                meas = np.array( [d['power'] for d in self.measurement_list])
+                idx = np.where(np.logical_and(meas>=SIG_BOUND_LOW, meas<=SIG_BOUND))
+                common_lon = vehicle.position.lon
+                lats = np.array( [d['lat'] for i, d in enumerate(self.measurement_list) if i in idx ] )
+                meas = np.array( [d['power'] for i, d in enumerate(self.measurement_list) if i in idx ])
+                dist = 465.1662158364831 + -9.655778240458593*meas
+                # estimated latitudes of rover
+                est_lat = [ geopy.distance.distance(meters = d).destination(point=geopy.Point(l, common_lon), bearing=0) for l, d in zip(lats, dist) ]
+                print(est_lat, np.mean(est_lat))
+            
+            #  - find LON that maximizes signal strength
+            
+
+            # save the positions and measurements if logging to file
+            if self.save_csv:
+                for m in self.measurement_list:
+                    self.csv_writer.writerow(
+                        [datetime.datetime.now() - self.start_time, m['lat'], m['lon'], SEARCH_ALTITUDE, m['power'], self.best_pos.lat,self.best_pos.lon]
+                    )
+
+            # reset measurement list
+            self.measurement_list = []
+            return "suggest_oob"
 
     @state(name="suggest")
     async def suggest(self, vehicle: Drone):
@@ -226,6 +275,29 @@ class RoverSearch(StateMachine):
         self.next_waypoint = self.optimizer.suggest(self.utility)
         # go to next waypoint
         return "probe"
+    
+    @state(name="suggest_oob")
+    async def suggest_oob(self, vehicle: Drone):
+
+        # suggest the next waypoint to visit
+        # four possible scenarios - 
+        # 1. we think rover is OOB to the N and we are trying to estimate how far OOB
+        # for this to work, we need to be at the same E/W position as the drone
+        if self.oob_probe_state_idx==0:
+            print("Should already be in our current best position (1), now go to position 100m S (2)")
+            start_point = geopy.Point(vehicle.position.lat, vehicle.position.lon)
+            next_point = geopy.distance.distance(meters = 100).destination(point=start_point, bearing=180) # bearing of zero is to north, 180 is to south
+            self.next_waypoint = {'lat': next_point.latitude, 'lon': next_point.longitude}
+            self.oob_probe_state_idx  = 1
+        elif self.oob_probe_state_idx==1:
+            self.next_waypoint = {'lat': self.start_best_pos['lat'], 'lon': self.start_best_pos['lon']}
+            self.oob_probe_state_idx  = 0
+        # 2. we think rover is OOB to the N and we are trying to optimize our E/W position
+        # 3. we think rover is OOB to the W and we are trying to estimate how far OOB
+        # 4. we think rover is OOB to the W and we are trying to optimize our N/S position
+        # go to next waypoint
+        return "probe"
+
 
     @state(name="probe")
     async def probe(self, vehicle: Drone):
