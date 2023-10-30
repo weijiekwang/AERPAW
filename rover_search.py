@@ -22,6 +22,7 @@ from bayes_opt import BayesianOptimization, UtilityFunction, SequentialDomainRed
 from sklearn.gaussian_process.kernels import Matern, WhiteKernel, RBF, RationalQuadratic, ExpSineSquared, DotProduct
 
 import geopy
+import geopy.distance
 
 BOUND_NE={'lon':-78.69621514941473, 'lat':35.72931030026633}
 BOUND_NW={'lon':-78.69953825817279, 'lat':35.72931030026633}
