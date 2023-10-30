@@ -254,7 +254,7 @@ class RoverSearch(StateMachine):
                 meas = np.array( [d['power'] for i, d in enumerate(self.measurement_list) if i in idx ])
                 dist = 465.1662158364831 + -9.655778240458593*meas
                 # estimated latitudes of rover
-                est_lat = [ geopy.distance.distance(meters = d).destination(point=geopy.Point(l, common_lon), bearing=0) for l, d in zip(lats, dist) ]
+                est_lat = [ geopy.distance.distance(meters = d).destination(point=geopy.Point(l, common_lon), bearing=0).latitude for l, d in zip(lats, dist) ]
                 print(est_lat, np.mean(est_lat))
             
             #  - find LON that maximizes signal strength
