@@ -141,10 +141,6 @@ class RoverSearch(StateMachine):
 
     @state(name="start", first=True)
     async def start(self, vehicle: Drone):
-
-        while not vehicle.armed:
-            await asyncio.sleep(0.01)
-
         # record the start time of the search
         self.start_time = datetime.datetime.now()
         # create a fake radio if the arg was passed in
