@@ -248,10 +248,10 @@ class RoverSearch(StateMachine):
 
                 # get measurements that are in linear range
                 meas = np.array( [d['power'] for d in self.measurement_list])
-                idx = np.where(np.logical_and(meas>=SIG_BOUND_LOW, meas<=SIG_BOUND))
+                idx = np.where(np.logical_and(meas>=SIG_BOUND_LOW, meas<=SIG_BOUND))[0]
                 common_lon = vehicle.position.lon
-                lats = np.array( [d['lat'] if i in idx for i, d in enumerate(self.measurement_list) ] )
-                meas = np.array( [d['power'] if i in idx for i, d in enumerate(self.measurement_list)  ])
+                lats = np.array( [d['lat'] for i, d in enumerate(self.measurement_list) if i in idx ] )
+                meas = np.array( [d['power'] for i, d in enumerate(self.measurement_list) if i in idx ])
                 dist = 465.1662158364831 + -9.655778240458593*meas
                 # estimated latitudes of rover
                 est_lat = [ geopy.distance.distance(meters = d).destination(point=geopy.Point(l, common_lon), bearing=0) for l, d in zip(lats, dist) ]
