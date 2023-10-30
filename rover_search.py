@@ -141,6 +141,10 @@ class RoverSearch(StateMachine):
 
     @state(name="start", first=True)
     async def start(self, vehicle: Drone):
+
+        while not vehicle.armed():
+            await asyncio.sleep(0.01)
+
         # record the start time of the search
         self.start_time = datetime.datetime.now()
         # create a fake radio if the arg was passed in
@@ -208,7 +212,7 @@ class RoverSearch(StateMachine):
         elif self.probe_state == STATE_STEADY:
 
             # check if rover is out of bounds:
-            if (self.best_measurement > SIG_BOUND) and ( ( LAT_BOUND_SLACK <= self.best_pos.lat <=  MAX_LAT ) or (  MIN_LON <= self.best_pos.lon <= LON_BOUND_SLACK )  ):
+            if  ( ( LAT_BOUND_SLACK <= self.best_pos.lat <=  MAX_LAT ) or (  MIN_LON <= self.best_pos.lon <= LON_BOUND_SLACK )  ):
                 print("Rover is probably out of bounds")
                 self.probe_state = STATE_OOB
                 self.next_waypoint = {'lat': self.start_best_pos['lat'], 'lon': self.start_best_pos['lon']}
