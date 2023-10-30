@@ -8,7 +8,7 @@
 
 ### Prepare UAV and UGV resources for an experiment
 
-Set up the radio transmitter on the rover:
+On the rover E-VM, set up the radio transmitter:
 
 ```
 cd /root/Profiles/ProfileScripts/Radio 
@@ -29,14 +29,14 @@ vim /root/startExperiment.sh # or whatever text editor
 ```
 and un-comment the `./Vehicle/startVehicle.sh` and `./Radio/startRadio.sh` lines. Save and close.
 
-Set up the radio transmitter on the UAV:
+On the drone E-VM, set up the radio transmitter:
 
 ```
 cd /root/Profiles/ProfileScripts/Radio 
 cp Samples/startGNURadio-ChannelSounder-RX.sh startRadio.sh 
 ```
 
-Set up the rover search on the UAV:
+Set up the rover search on the drone:
 
 ```
 cd /root/Profiles/ProfileScripts/Vehicle
