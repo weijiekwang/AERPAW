@@ -158,6 +158,8 @@ class RoverSearch(StateMachine):
     @state(name="register")
     async def register(self, vehicle: Drone):
 
+        print("Current state: ", self.probe_state)
+
         # register last value
         self.optimizer.register(params={'lat': vehicle.position.lat, 'lon': vehicle.position.lon}, target=self.measurement_list[-1]['power'])
         # register max value
@@ -237,10 +239,10 @@ class RoverSearch(StateMachine):
 
             # if we think the rover is in the N part of the area
             if self.oob_probe_state_idx==0:
-                pass
-            
-            elif self.oob_probe_state_idx==1:
+                print("We're currently at the best known position we can get to")
 
+            elif self.oob_probe_state_idx==1:
+                print("We're currently 100m south of the best known position we can get to")
                 #  - measure signal strength at different LAT values and estimate distance
 
                 # get measurements that are in linear range
