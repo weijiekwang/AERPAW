@@ -52,6 +52,8 @@ LON_BOUND_SLACK = MIN_LON + (MAX_LON-MIN_LON)*0.02
 HEADING_SEQ_N = [-1, 180, -1]
 HEADING_SEQ_W = [-1, 90, -1]
 
+OOB_CYCLE = 5 # after every X intervals in steady state, go to OOB state again
+
 def argmax(x):
     return max(range(len(x)), key=lambda i: x[i])
 
@@ -64,6 +66,7 @@ class RoverSearch(StateMachine):
 
     heading_seq_n_idx = 0
     heading_seq_w_idx = 0
+    oob_cycle_idx = 0
 
     probe_state = STATE_TAKEOFF
     measurement_list = []
@@ -213,8 +216,6 @@ class RoverSearch(StateMachine):
                 self.probe_state = STATE_OOB_N
                 print("Setting next state to STATE_OOB_N")
 
-            # otherwise, go to steady state
-
             elif (  MIN_LON <= self.start_best_pos['lon'] <= LON_BOUND_SLACK )  :
                 self.probe_state = STATE_OOB_W
                 print("Setting next state to STATE_OOB_W")
@@ -248,6 +249,24 @@ class RoverSearch(StateMachine):
 
             # reset measurement list
             self.measurement_list = []
+
+            # keep track of whether it's time to repeat OOB search procedure
+            self.oob_cycle_idx = (self.oob_cycle_idx + 1 ) % OOB_CYCLE
+            #print("OOB cycle index", self.oob_cycle_idx)
+
+            if (self.oob_cycle_idx+1==OOB_CYCLE) and  (LAT_BOUND_SLACK <= self.start_best_pos['lat'] <=  MAX_LAT ) :
+                self.probe_state = STATE_OOB_N
+                print("Setting next state to STATE_OOB_N")
+                self.next_waypoint = {'lat': self.best_pos.lat, 'lon': self.best_pos.lon}
+                return "probe"
+
+            elif (self.oob_cycle_idx+1==OOB_CYCLE) and (  MIN_LON <= self.start_best_pos['lon'] <= LON_BOUND_SLACK )  :
+                self.probe_state = STATE_OOB_W
+                print("Setting next state to STATE_OOB_W")
+                self.next_waypoint = {'lat': self.best_pos.lat, 'lon': self.best_pos.lon}
+                return "probe"
+
+
             return "suggest"
     
         elif self.probe_state == STATE_OOB_N:
@@ -260,32 +279,33 @@ class RoverSearch(StateMachine):
             lats = np.array( [d['lat'] for i, d in enumerate(self.measurement_list) if i in idx ] )
             lons = np.array( [d['lon'] for i, d in enumerate(self.measurement_list) if i in idx ] )
 
-            common_lon = lons.mean()
+            common_lon = np.median(lons)
             dist = 465.1662158364831 + -9.655778240458593*meas
             # estimated latitudes of rover
             est_lat = [ geopy.distance.distance(meters = d).destination(point=geopy.Point(l, common_lon), bearing=0).latitude for l, d in zip(lats, dist) ]
             if len(est_lat):
-                print("Updating latitude from %f to %f based on %d measurements from %f to %f" % (self.best_pos.lat, np.mean(est_lat), len(est_lat), np.min(est_lat), np.max(est_lat) ) ) 
-                self.best_pos.lat = np.mean(est_lat)
-                self.oob_best_pos['lat'] = np.mean(est_lat)
+                print("Updating latitude from %f to %f based on %d measurements from %f to %f" % (self.best_pos.lat, np.median(est_lat), len(est_lat), np.min(meas), np.max(meas) ) ) 
+                self.best_pos.lat = np.median(est_lat)
+                self.oob_best_pos['lat'] = np.median(est_lat)
             print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, self.best_measurement, datetime.datetime.now() - self.start_time)
+
+            # reset measurement list
+            self.measurement_list = []
 
             self.heading_seq_n_idx = self.heading_seq_n_idx+1
 
-            if (self.heading_seq_n_idx > len(HEADING_SEQ_N) -1 ) and (  MIN_LON <= self.start_best_pos['lon'] <= LON_BOUND_SLACK )  :
-                self.probe_state = STATE_OOB_W
-                print("Setting next state to STATE_OOB_W")
-            
-            elif (self.heading_seq_n_idx > len(HEADING_SEQ_N) -1 ):
-                
+            #if (self.heading_seq_n_idx > len(HEADING_SEQ_N) -1 ) and (  MIN_LON <= self.start_best_pos['lon'] <= LON_BOUND_SLACK )  :
+            #    self.probe_state = STATE_OOB_W
+            #    print("Setting next state to STATE_OOB_W")
+            # don't do OOB-W search if already did OOB-N search
+
+            if (self.heading_seq_n_idx > len(HEADING_SEQ_N) -1 ):
+                self.heading_seq_n_idx = 0
                 self.probe_state = STATE_STEADY
                 print("Setting next state to STEADY")
 
-                self.measurement_list = []
                 return "suggest"
             
-            # reset measurement list
-            self.measurement_list = []
             return "suggest_seq"
 
 
@@ -301,28 +321,28 @@ class RoverSearch(StateMachine):
             lons = np.array( [d['lon'] for i, d in enumerate(self.measurement_list) if i in idx ] )
 
             #print("Was going E/W ", self.heading_seq_w_idx)
-            common_lat = lats.mean()
+            common_lat = np.median(lats)
             dist = 419.02560625154297 + -8.90365500944478*meas
             # estimated latitudes of rover
             est_lon = [ geopy.distance.distance(meters = d).destination(point=geopy.Point(common_lat, l), bearing=0).longitude for l, d in zip(lons, dist) ]
             if len(est_lon):
-                print("Updating longitude from %f to %f based on %d measurements from %f to %f" % (self.best_pos.lon, np.mean(est_lon), len(est_lon), np.min(est_lon), np.max(est_lon) ) ) 
-                self.best_pos.lon = np.mean(est_lon)
-                self.oob_best_pos['lon'] = np.mean(est_lon)
+                print("Updating longitude from %f to %f based on %d measurements from %f to %f" % (self.best_pos.lon, np.median(est_lon), len(est_lon), np.min(meas), np.max(meas) ) ) 
+                self.best_pos.lon = np.median(est_lon)
+                self.oob_best_pos['lon'] = np.median(est_lon)
             print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, self.best_measurement, datetime.datetime.now() - self.start_time)
+
+            # reset measurement list
+            self.measurement_list = []
 
             self.heading_seq_w_idx = (self.heading_seq_w_idx+1) % 8
 
             if (self.heading_seq_w_idx > len(HEADING_SEQ_W) -1 ):
+                self.heading_seq_w_idx = 0
                 self.probe_state = STATE_STEADY
                 print("Setting next state to STEADY")
 
-                self.measurement_list = []
                 return "suggest"
 
-
-            # reset measurement list
-            self.measurement_list = []
             return "suggest_seq"
 
     @state(name="suggest")
@@ -422,16 +442,16 @@ class RoverSearch(StateMachine):
             f"Best rover location estimate {self.best_pos.lat, self.best_pos.lon} with measurement {self.best_measurement} after {datetime.datetime.now()-self.start_time} minutes"
         )
 
-        xvalues = np.linspace(MIN_LAT, MAX_LAT, num=500)
-        yvalues = np.linspace(MIN_LON, MAX_LON, num=500)
-        a,b = np.meshgrid(xvalues,yvalues)
-        positions = np.vstack([a.ravel(), b.ravel()])
-        x_test = (np.array(positions)).T
-        y_test = self.optimizer._gp.predict(x_test)
-        idx_max = np.argmax(y_test)
-        print(
-            f"Max of GP estimate {x_test[idx_max,0], x_test[idx_max,1]} with predicted measurement {y_test[idx_max]}"
-        )
+        #xvalues = np.linspace(MIN_LAT, MAX_LAT, num=500)
+        #yvalues = np.linspace(MIN_LON, MAX_LON, num=500)
+        #a,b = np.meshgrid(xvalues,yvalues)
+        #positions = np.vstack([a.ravel(), b.ravel()])
+        #x_test = (np.array(positions)).T
+        #y_test = self.optimizer._gp.predict(x_test)
+        #idx_max = np.argmax(y_test)
+        #print(
+        #    f"Max of GP estimate {x_test[idx_max,0], x_test[idx_max,1]} with predicted measurement {y_test[idx_max]}"
+        #)
         home_coords = Coordinate(
             vehicle.home_coords.lat, vehicle.home_coords.lon, vehicle.position.alt
         )
