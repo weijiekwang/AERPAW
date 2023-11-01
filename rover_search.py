@@ -206,7 +206,7 @@ class RoverSearch(StateMachine):
             self.start_best_pos['lat'] = self.measurement_list[idx_max_lat]['lat']
             # set best position now - to save time
             self.best_pos = Coordinate(self.start_best_pos['lat'], self.start_best_pos['lon'], SEARCH_ALTITUDE)
-            print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, self.best_measurement, datetime.datetime.now() - self.start_time)
+            print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, datetime.datetime.now() - self.start_time)
             # now start steady state - first go to best position
             self.measurement_list = []
             self.next_waypoint = {'lat': self.start_best_pos['lat'], 'lon': self.start_best_pos['lon']}
@@ -238,7 +238,7 @@ class RoverSearch(StateMachine):
                 self.best_pos.lon =  self.oob_best_pos['lon']
             if self.oob_best_pos['lat']:
                 self.best_pos.lat =  self.oob_best_pos['lat']
-            print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, self.best_measurement, datetime.datetime.now() - self.start_time)
+            print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, datetime.datetime.now() - self.start_time)
             
             # save the positions and measurements if logging to file
             if self.save_csv:
@@ -287,7 +287,7 @@ class RoverSearch(StateMachine):
                     print("Updating latitude from %f to %f based on %d measurements from %f to %f" % (self.best_pos.lat, np.median(est_lat), len(est_lat), np.min(meas), np.max(meas) ) ) 
                     self.best_pos.lat = np.median(est_lat)
                     self.oob_best_pos['lat'] = np.median(est_lat)
-                print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, self.best_measurement, datetime.datetime.now() - self.start_time)
+                print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, datetime.datetime.now() - self.start_time)
 
             # reset measurement list
             self.measurement_list = []
@@ -331,7 +331,7 @@ class RoverSearch(StateMachine):
                     print("Updating longitude from %f to %f based on %d measurements from %f to %f" % (self.best_pos.lon, np.median(est_lon), len(est_lon), np.min(meas), np.max(meas) ) ) 
                     self.best_pos.lon = np.median(est_lon)
                     self.oob_best_pos['lon'] = np.median(est_lon)
-                print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, self.best_measurement, datetime.datetime.now() - self.start_time)
+                print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, datetime.datetime.now() - self.start_time)
 
             # reset measurement list
             self.measurement_list = []
