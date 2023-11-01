@@ -77,19 +77,30 @@ To start the experiment,
 
 After takeoff, the drone will fly to the SE corner of the bounding rectangle:
 
-<img src="https://github.com/weijiekwang/AERPAW/assets/2316553/fdf9675e-c307-4846-8a3b-ce4e2145e381" width="250px"/>
+<img src="https://github.com/weijiekwang/AERPAW/assets/2316553/fdf9675e-c307-4846-8a3b-ce4e2145e381" width="400px"/>
 
 then to the SW bound, and then to the NW: 
 
-<img src="https://github.com/weijiekwang/AERPAW/assets/2316553/b42d82ec-7d82-40a5-88f1-07b3dda9c4ac" width="250px"/>
+<img src="https://github.com/weijiekwang/AERPAW/assets/2316553/b42d82ec-7d82-40a5-88f1-07b3dda9c4ac" width="400px"/>
 
 
 Then, it will fly to various waypoints within its bounding rectangle. Many of the waypoints will be very near to the rover, and the trajectory may appear somewhat random:
 
-<img src="https://github.com/weijiekwang/AERPAW/assets/2316553/8480b5ce-1aa3-4bac-bc18-53bc71ea4517" width="250px"/>
+<img src="https://github.com/weijiekwang/AERPAW/assets/2316553/8480b5ce-1aa3-4bac-bc18-53bc71ea4517" width="400px"/>
 
 
 It may also occasionally fly to more distant waypoints, including the corners of its bounding rectangle.
+
+The rover search code will regularly print estimate of the rover position to `stdout` on the drone, e.g. 
+
+```
+Position estimate:  35.7288639 -78.6977849 0:09:46.246165
+```
+where the values are latitude, longitude, and search time. 
+
+(Note that if the drone is not armed already when the code begins to run, so that it has to wait for the drone to be armed, the search time that is printed will not be accurate.)
+
+After a ten-minute search time, the drone will land at its home position.
 
 ## Notes
 
