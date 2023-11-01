@@ -77,7 +77,7 @@ To start the experiment,
 
 After takeoff, the drone will fly to the SE corner of the bounding rectangle:
 
-![image](https://github.com/weijiekwang/AERPAW/assets/2316553/fdf9675e-c307-4846-8a3b-ce4e2145e381)
+<img src="https://github.com/weijiekwang/AERPAW/assets/2316553/fdf9675e-c307-4846-8a3b-ce4e2145e381" width="250px">
 
 then to the SW bound, and then to the NW: 
 
