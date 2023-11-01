@@ -2,7 +2,7 @@
 
 This experiment implements a wireless signal localization task on the AERPAW testbed, for the [AERPAW AFAR Challenge](https://aerpaw.org/aerpaw-afar-challenge/).
 
-To reproduce this experiment on AERPAW, you will need to have [created an account on AERPAW that is part of a project](https://sites.google.com/ncsu.edu/aerpaw-wiki/aerpaw-user-manual/2-experiment-lifecycle-workflows/2-1-account-creation-and-authentication?authuser=0), and you will need to have [set up SSH keys in your account](https://sites.google.com/ncsu.edu/aerpaw-wiki/aerpaw-user-manual/2-experiment-lifecycle-workflows/2-2-account-authorization-and-roles?authuser=0#h.b7zx5bsw18bh). You will also need to have installed [a VPN client]([https://openvpn.net/](https://sites.google.com/ncsu.edu/aerpaw-wiki/aerpaw-user-manual/2-experiment-lifecycle-workflows/2-6-experiment-access-workflow?authuser=0#h.m45jkgvsom69) and [QGroundControl](https://docs.qgroundcontrol.com/master/en/getting_started/download_and_install.html).
+To reproduce this experiment on AERPAW, you will need to have [created an account on AERPAW that is part of a project](https://sites.google.com/ncsu.edu/aerpaw-wiki/aerpaw-user-manual/2-experiment-lifecycle-workflows/2-1-account-creation-and-authentication?authuser=0), and you will need to have [set up SSH keys in your account](https://sites.google.com/ncsu.edu/aerpaw-wiki/aerpaw-user-manual/2-experiment-lifecycle-workflows/2-2-account-authorization-and-roles?authuser=0#h.b7zx5bsw18bh). You will also need to have installed [a VPN client](https://openvpn.net/) and [QGroundControl](https://docs.qgroundcontrol.com/master/en/getting_started/download_and_install.html).
 
 
 ## Background
