@@ -75,6 +75,8 @@ To start the experiment,
 * in the OEO console, run `1 start_experiment`
 * in QGroundControl, arm the drone (Vechile 1)
 
+#### Drone flight pattern
+
 After takeoff, the drone will fly to the SE corner of the bounding rectangle:
 
 <img src="https://github.com/weijiekwang/AERPAW/assets/2316553/fdf9675e-c307-4846-8a3b-ce4e2145e381" width="400px"/>
