@@ -273,6 +273,7 @@ class RoverSearch(StateMachine):
             #idx = np.argmax([m['power'] for m in self.measurement_list])
             #print("Best observation on this trip: ", self.measurement_list[idx]['lat'], self.measurement_list[idx]['lon'], self.measurement_list[idx]['power'] )
             if self.heading_seq_n_idx>=1:
+                print(self.measurement_list)
                 meas = np.array( [d['power'] for d in self.measurement_list])
                 idx = np.where(np.logical_and(meas>=SIG_BOUND_LOW, meas<=SIG_BOUND))[0]
                 meas = np.array( [d['power'] for i, d in enumerate(self.measurement_list) if i in idx ])
@@ -315,7 +316,7 @@ class RoverSearch(StateMachine):
             #"Best observation on this trip: ", self.measurement_list[idx]['lat'], self.measurement_list[idx]['lon'], self.measurement_list[idx]['power'] )
 
             if self.heading_seq_w_idx>=1:
-
+                print(self.measurement_list)
                 meas = np.array( [d['power'] for d in self.measurement_list])
                 idx = np.where(np.logical_and(meas>=SIG_BOUND_LOW, meas<=SIG_BOUND))[0]
                 meas = np.array( [d['power'] for i, d in enumerate(self.measurement_list) if i in idx ])
