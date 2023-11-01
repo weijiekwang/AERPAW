@@ -2,6 +2,13 @@
 
 ## Background
 
+In this experiment, we are tasked with designing a trajectory for an autonomous UAV (drone), in order to localize an unmanned ground vehicle (UGV, rover) that is transmitting a wireless signal.
+
+The rover will be randomly positions in the green bounding rectangle, and the drone may fly within the blue bounding rectangle: 
+
+<img src="https://github.com/weijiekwang/AERPAW/assets/2316553/625757ef-d285-4b47-9bcb-11da0387e64d" width="400px">
+
+
 ## Results
 
 ## Run my experiment
