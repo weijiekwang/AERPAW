@@ -273,19 +273,19 @@ class RoverSearch(StateMachine):
             #idx = np.argmax([m['power'] for m in self.measurement_list])
             #print("Best observation on this trip: ", self.measurement_list[idx]['lat'], self.measurement_list[idx]['lon'], self.measurement_list[idx]['power'] )
             if self.heading_seq_n_idx>=1:
-                print(self.measurement_list)
+                #print(self.measurement_list)
                 meas = np.array( [d['power'] for d in self.measurement_list])
                 idx = np.where(np.logical_and(meas>=SIG_BOUND_LOW, meas<=SIG_BOUND))[0]
                 meas = np.array( [d['power'] for i, d in enumerate(self.measurement_list) if i in idx ])
                 lats = np.array( [d['lat'] for i, d in enumerate(self.measurement_list) if i in idx ] )
                 lons = np.array( [d['lon'] for i, d in enumerate(self.measurement_list) if i in idx ] )
-
-                common_lon = np.median(lons)
-                dist = 465.1662158364831 + -9.655778240458593*meas
+                
+                #dist = 465.1662158364831 + -9.655778240458593*meas
+                dist = 492.21897944364474 +  -10.249809981197462*meas
                 # estimated latitudes of rover
-                est_lat = [ geopy.distance.distance(meters = d).destination(point=geopy.Point(l, common_lon), bearing=0).latitude for l, d in zip(lats, dist) ]
+                est_lat = [ geopy.distance.distance(meters = d).destination(point=geopy.Point(la, lo), bearing=0).latitude for la, lo, d in zip(lats, lons, dist) ]
                 if len(est_lat):
-                    print("Updating latitude from %f to %f based on %d measurements from %f to %f" % (self.best_pos.lat, np.median(est_lat), len(est_lat), np.min(meas), np.max(meas) ) ) 
+                    #print("Updating latitude from %f to %f based on %d measurements from %f to %f" % (self.best_pos.lat, np.median(est_lat), len(est_lat), np.min(meas), np.max(meas) ) ) 
                     self.best_pos.lat = np.median(est_lat)
                     self.oob_best_pos['lat'] = np.median(est_lat)
                 print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, datetime.datetime.now() - self.start_time)
@@ -316,7 +316,7 @@ class RoverSearch(StateMachine):
             #"Best observation on this trip: ", self.measurement_list[idx]['lat'], self.measurement_list[idx]['lon'], self.measurement_list[idx]['power'] )
 
             if self.heading_seq_w_idx>=1:
-                print(self.measurement_list)
+                #print(self.measurement_list)
                 meas = np.array( [d['power'] for d in self.measurement_list])
                 idx = np.where(np.logical_and(meas>=SIG_BOUND_LOW, meas<=SIG_BOUND))[0]
                 meas = np.array( [d['power'] for i, d in enumerate(self.measurement_list) if i in idx ])
@@ -324,12 +324,12 @@ class RoverSearch(StateMachine):
                 lons = np.array( [d['lon'] for i, d in enumerate(self.measurement_list) if i in idx ] )
 
                 #print("Was going E/W ", self.heading_seq_w_idx)
-                common_lat = np.median(lats)
-                dist = 419.02560625154297 + -8.90365500944478*meas  
+
+                dist = 385.58835496039694 + -7.879822789610755*meas  
                 # estimated latitudes of rover
-                est_lon = [ geopy.distance.distance(meters = d).destination(point=geopy.Point(common_lat, l), bearing=270).longitude for l, d in zip(lons, dist) ]
+                est_lon = [ geopy.distance.distance(meters = d).destination(point=geopy.Point(la, lo), bearing=270).longitude for la, lo, d in zip(lats, lons, dist) ]
                 if len(est_lon):
-                    print("Updating longitude from %f to %f based on %d measurements from %f to %f" % (self.best_pos.lon, np.median(est_lon), len(est_lon), np.min(meas), np.max(meas) ) ) 
+                    #print("Updating longitude from %f to %f based on %d measurements from %f to %f" % (self.best_pos.lon, np.median(est_lon), len(est_lon), np.min(meas), np.max(meas) ) ) 
                     self.best_pos.lon = np.median(est_lon)
                     self.oob_best_pos['lon'] = np.median(est_lon)
                 print("Position estimate: ", self.best_pos.lat, self.best_pos.lon, datetime.datetime.now() - self.start_time)
