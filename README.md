@@ -77,15 +77,17 @@ To start the experiment,
 
 After takeoff, the drone will fly to the SE corner of the bounding rectangle:
 
-<img src="https://github.com/weijiekwang/AERPAW/assets/2316553/fdf9675e-c307-4846-8a3b-ce4e2145e381" width="250px">
+<img src="https://github.com/weijiekwang/AERPAW/assets/2316553/fdf9675e-c307-4846-8a3b-ce4e2145e381" width="250px"/>
 
 then to the SW bound, and then to the NW: 
 
-![image](https://github.com/weijiekwang/AERPAW/assets/2316553/b42d82ec-7d82-40a5-88f1-07b3dda9c4ac)
+<img src="https://github.com/weijiekwang/AERPAW/assets/2316553/b42d82ec-7d82-40a5-88f1-07b3dda9c4ac" width="250px"/>
+
 
 Then, it will fly to various waypoints within its bounding rectangle. Many of the waypoints will be very near to the rover, and the trajectory may appear somewhat random:
 
-![image](https://github.com/weijiekwang/AERPAW/assets/2316553/8480b5ce-1aa3-4bac-bc18-53bc71ea4517)
+<img src="https://github.com/weijiekwang/AERPAW/assets/2316553/8480b5ce-1aa3-4bac-bc18-53bc71ea4517" width="250px"/>
+
 
 It may also occasionally fly to more distant waypoints, including the corners of its bounding rectangle.
 
