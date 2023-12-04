@@ -31,9 +31,32 @@ MIN_LAT = BOUND_SE['lat']
 
 SEARCH_ALTITUDE = 50 # in meters
 
+
 WAYPOINTS = [
     Coordinate(BOUND_SE['lat'], BOUND_SE['lon'], SEARCH_ALTITUDE)
 ]
+
+
+difference_lat=(BOUND_NE['lat'] - BOUND_SE['lat'])/10
+difference_lon=(BOUND_NE['lon'] - BOUND_NW['lon'])/10
+for i in range(5):
+    current_lon=BOUND_NW['lon']+difference_lon*i
+    current_lat=BOUND_NW['lat']-difference_lat*i
+    WAYPOINTS.append(Coordinate(current_lat,current_lon,SEARCH_ALTITUDE))
+
+    current_lon=BOUND_NE['lon']-difference_lon*i
+    current_lat=BOUND_NE['lat']-difference_lat*i
+    WAYPOINTS.append(Coordinate(current_lat,current_lon,SEARCH_ALTITUDE))
+
+    current_lon=BOUND_SE['lon']-difference_lon*i
+    current_lat=BOUND_SE['lat']+difference_lat*i
+    WAYPOINTS.append(Coordinate(current_lat,current_lon,SEARCH_ALTITUDE))
+
+    current_lon=BOUND_SW['lon']+difference_lon*i
+    current_lat=BOUND_SW['lat']+difference_lat*i
+    WAYPOINTS.append(Coordinate(current_lat,current_lon,SEARCH_ALTITUDE))
+
+
 
 
 class RoverSearch(StateMachine):
