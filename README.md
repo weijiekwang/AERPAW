@@ -36,6 +36,16 @@ Select LPN1 first and then SPN-Android since we're assuming node 1 is the UAV an
 
 <image src="https://github.com/weijiekwang/AERPAW/assets/123581716/0acd0690-26f2-4f40-a85b-89f7379c6bc2" width="800px">
 
+Then modify the node vehicle of LPN1 to "vehicle_uav" and SPN-Android to "vehicle_ugv".
+
+<image src="https://github.com/weijiekwang/AERPAW/assets/123581716/0acd0690-26f2-4f40-a85b-89f7379c6bc2" width="800px">
+
+<image src=https://"github.com/weijiekwang/AERPAW/assets/123581716/d347737f-0e95-4218-a504-90190205a1d5" width="400px">
+<image src="https://github.com/weijiekwang/AERPAW/assets/123581716/42cfb511-da48-4b5c-ba7b-e7af987bf942" width="400px">
+
+
+
+
 
 ### Prepare UAV and UGV resources for an experiment
 
