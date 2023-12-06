@@ -26,7 +26,9 @@ Our approach is in three parts:
 ## Run my experiment
 
 ### Create an experiment with a UAV and UGV resource
-In the AERPAW Testbed, create an experiment in the Project Section
+
+First, log in to the [AERPAW Experiment Portal](https://user-web-portal.aerpaw.ncsu.edu/). Click on "Projects" in the navigation bar, and find the project that you are a member of; click on it to open the project overview. Click on the "Create" button in the "Experiments" section. Give your project a "Name" and a "Description" and then click "Save".
+
 
 <image src="https://github.com/weijiekwang/AERPAW/assets/123581716/fe7d3675-abc3-4895-ad4f-63b43d5e9aec" width="400px">
 
