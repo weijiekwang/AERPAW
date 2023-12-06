@@ -55,6 +55,7 @@ Click "Back to Experiment", then "Initialize Development".
 
  Wait until you receive an email notification that the experiment is ready to use.
 
+### Access experiment resources
 
 ### Prepare UAV and UGV resources for an experiment
 
