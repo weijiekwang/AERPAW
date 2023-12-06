@@ -35,25 +35,25 @@ From the experiment page, you will add members (optional) and resources (require
 
 If multiple users will require access to the experiment, you should add them at this stage. Next to "Members", click "Update" and add any additional project members that will need access.
 
-Next, click on the "Update" button next to "Targeted Resources". 
-
-Select LPN1 first and then SPN-Android since we're assuming node 1 is the UAV and node2 is the UGV.
+Next, click on the "Update" button next to "Targeted Resources". On this page, you will add two resources to the experiment: first select LPN1 (this will be the UAV, which is assumed to be the first vehicle in the rest of the instructions) and then select SPN-Android (this will be the UGV, which is assumed to be the second vehicle in the rest of the instructions):
 
 <image src="https://github.com/weijiekwang/AERPAW/assets/123581716/0acd0690-26f2-4f40-a85b-89f7379c6bc2" width="800px">
 
-Then modify the node vehicle of LPN1 to "vehicle_uav" and SPN-Android to "vehicle_ugv".
+Click "Save". Then, you will modify each of the nodes by clicking "Modify" - 
 
 <image src="https://github.com/weijiekwang/AERPAW/assets/123581716/234e6b93-b6df-4a4c-8721-59778790359a" width="800px">
 
-<image src="https://github.com/weijiekwang/AERPAW/assets/123581716/d347737f-0e95-4218-a504-90190205a1d5" width="400px">
-<image src="https://github.com/weijiekwang/AERPAW/assets/123581716/42cfb511-da48-4b5c-ba7b-e7af987bf942" width="400px">
+* for node 1 (LPN1), change the "Node Vehicle" property to "vehicle_uav" and click "Save"
+* for node 2 (SPN-Android), change the "Node Vehicle" property to "vehicle_ugv" and click "Save"
 
-Click "Back to Experiment", then "Initiailize the experiment" and wait for email updates to notify the experiment is ready to use.
+<image src="https://github.com/weijiekwang/AERPAW/assets/123581716/d347737f-0e95-4218-a504-90190205a1d5" width="200px">
+<image src="https://github.com/weijiekwang/AERPAW/assets/123581716/42cfb511-da48-4b5c-ba7b-e7af987bf942" width="200px">
+
+Click "Back to Experiment", then "Initialize Development".
 
 <image src="https://github.com/weijiekwang/AERPAW/assets/123581716/5229775b-ca15-4e9d-8b33-6cb9bb8113df" width="800px">
 
-
-
+ Wait until you receive an email notification that the experiment is ready to use.
 
 
 ### Prepare UAV and UGV resources for an experiment
