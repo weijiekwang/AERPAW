@@ -93,9 +93,9 @@ wget https://raw.githubusercontent.com/weijiekwang/AERPAW/main/rover_search.py -
 To start the experiment,
 
 * in the OEO console, run `2 start_experiment`
-* in QGroundControl, arm the rover and move it to the desired location (within its bounding rectangle). Wait for it to reach its position.
+* in QGroundControl, arm the rover (Vehicle 2) and move it to the desired location (within its bounding rectangle). Wait for it to reach its position.
 * in the OEO console, run `1 start_experiment`
-* in QGroundControl, arm the drone (Vechile 1)
+* in QGroundControl, arm the drone (Vehicle 1)
 
 #### Drone flight pattern
 
