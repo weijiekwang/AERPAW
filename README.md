@@ -26,6 +26,12 @@ Our approach is in three parts:
 ## Run my experiment
 
 ### Create an experiment with a UAV and UGV resource
+In the AERPAW Testbed, create an experiment in the Project Section
+<image src="https://github.com/weijiekwang/AERPAW/assets/123581716/fe7d3675-abc3-4895-ad4f-63b43d5e9aec" width="400px">
+Adding all the group members in the members section.
+Update the drone and the rover you are using in "Targeted Resources":
+Select LPN1 first and then SPN-Android since we're assuming node 1 is the UAV and node2 is the UGV.
+<image src="https://github.com/weijiekwang/AERPAW/assets/123581716/0acd0690-26f2-4f40-a85b-89f7379c6bc2" width="400px">
 
 
 ### Prepare UAV and UGV resources for an experiment
