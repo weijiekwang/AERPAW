@@ -33,7 +33,7 @@ From the experiment page, you will add members (optional) and resources (require
 
 <image src="https://github.com/weijiekwang/AERPAW/assets/123581716/fe7d3675-abc3-4895-ad4f-63b43d5e9aec" width="200px">
 
-If multiple users will require access to the experiment, you should add them at this stage. Next to "Members", click "Update" and add any additional project members that will need access.
+If multiple users will require access to the experiment, you should add them at this stage. (You must add them before you "Initiate Development" to give them access to the experiment resources.) Next to "Members", click "Update" and add any additional project members that will need access.
 
 Next, click on the "Update" button next to "Targeted Resources". On this page, you will add two resources to the experiment: first select LPN1 (this will be the UAV, which is assumed to be the first vehicle in the rest of the instructions) and then select SPN-Android (this will be the UGV, which is assumed to be the second vehicle in the rest of the instructions):
 
