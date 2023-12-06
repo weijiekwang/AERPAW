@@ -29,11 +29,14 @@ Our approach is in three parts:
 
 First, log in to the [AERPAW Experiment Portal](https://user-web-portal.aerpaw.ncsu.edu/). Click on "Projects" in the navigation bar, and find the project that you are a member of; click on it to open the project overview. Click on the "Create" button in the "Experiments" section. Give your project a "Name" and a "Description" and then click "Save".
 
+From the experiment page, you will add members (optional) and resources (required) to the experiment: 
 
-<image src="https://github.com/weijiekwang/AERPAW/assets/123581716/fe7d3675-abc3-4895-ad4f-63b43d5e9aec" width="400px">
+<image src="https://github.com/weijiekwang/AERPAW/assets/123581716/fe7d3675-abc3-4895-ad4f-63b43d5e9aec" width="200px">
 
-Adding all the group members in the members section.
-Update the drone and the rover you are using in "Targeted Resources":
+If multiple users will require access to the experiment, you should add them at this stage. Next to "Members", click "Update" and add any additional project members that will need access.
+
+Next, click on the "Update" button next to "Targeted Resources". 
+
 Select LPN1 first and then SPN-Android since we're assuming node 1 is the UAV and node2 is the UGV.
 
 <image src="https://github.com/weijiekwang/AERPAW/assets/123581716/0acd0690-26f2-4f40-a85b-89f7379c6bc2" width="800px">
