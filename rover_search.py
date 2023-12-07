@@ -37,9 +37,9 @@ WAYPOINTS = [
 ]
 
 
-difference_lat=(BOUND_NE['lat'] - BOUND_SE['lat'])/10
-difference_lon=(BOUND_NE['lon'] - BOUND_NW['lon'])/10
-for i in range(5):
+difference_lat=(BOUND_NE['lat'] - BOUND_SE['lat'])/20
+difference_lon=(BOUND_NE['lon'] - BOUND_NW['lon'])/20
+for i in range(10):
     current_lon=BOUND_NW['lon']+difference_lon*i
     current_lat=BOUND_NW['lat']-difference_lat*i
     WAYPOINTS.append(Coordinate(current_lat,current_lon,SEARCH_ALTITUDE))
@@ -52,7 +52,7 @@ for i in range(5):
     current_lat=BOUND_SE['lat']+difference_lat*i
     WAYPOINTS.append(Coordinate(current_lat,current_lon,SEARCH_ALTITUDE))
 
-    current_lon=BOUND_SW['lon']+difference_lon*i
+    current_lon=BOUND_SW['lon']+difference_lon*(i-1)
     current_lat=BOUND_SW['lat']+difference_lat*i
     WAYPOINTS.append(Coordinate(current_lat,current_lon,SEARCH_ALTITUDE))
 
